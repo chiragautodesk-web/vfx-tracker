@@ -296,3 +296,26 @@
   color: var(--text-tertiary);
   font-family: var(--font-mono);
 }
+
+.empty-state p {
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .datagrid-wrapper {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+  
+  .datagrid-table {
+    min-width: 900px; /* Force horizontal scroll on small screens */
+  }
+  
+  .datagrid-scroll {
+    /* Ensure smooth touch scrolling */
+    -webkit-overflow-scrolling: touch;
+  }
+}

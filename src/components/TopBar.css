@@ -72,3 +72,34 @@
   gap: var(--space-2);
   margin-left: auto;
 }
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .topbar {
+    flex-wrap: wrap;
+    height: auto;
+    padding: var(--space-3) var(--space-4);
+    gap: var(--space-3);
+  }
+  
+  .topbar-left {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .topbar-stats {
+    display: none; /* Hide stats on mobile to save space */
+  }
+  
+  .topbar-actions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: var(--space-2);
+  }
+  
+  .topbar-actions::-webkit-scrollbar {
+    display: none;
+  }
+}

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { StoreProvider, useStore } from './store';
 import { ToastProvider } from './components/Toast';
 import Sidebar from './components/Sidebar';
@@ -8,6 +9,7 @@ import StatusPage from './pages/StatusPage';
 import ETAPage from './pages/ETAPage';
 import ArtistsPage from './pages/ArtistsPage';
 import './App.css';
+import LoginPage from './pages/LoginPage';
 
 function AppContent() {
   const { state } = useStore();
@@ -35,6 +37,19 @@ function AppContent() {
 }
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return sessionStorage.getItem('vfx-auth') === 'true';
+  });
+
+  const handleLogin = () => {
+    sessionStorage.setItem('vfx-auth', 'true');
+    setIsAuthenticated(true);
+  };
+
+  if (!isAuthenticated) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
   return (
     <StoreProvider>
       <ToastProvider>

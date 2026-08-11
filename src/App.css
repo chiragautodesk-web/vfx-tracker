@@ -17,4 +17,17 @@
   height: 100vh;
   overflow: hidden;
   background: var(--bg-primary);
+  transition: margin-left var(--transition-fast);
+}
+
+@media (max-width: 768px) {
+  .app-shell {
+    flex-direction: column;
+  }
+  
+  .app-main {
+    margin-left: 0;
+    height: calc(100vh - 60px); /* Leave room for bottom nav */
+    padding-bottom: 60px; /* Backup padding */
+  }
 }
