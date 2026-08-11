@@ -1,0 +1,153 @@
+/* =========================================================
+   Today Page — Daily Dashboard
+   ========================================================= */
+
+/* Hero summary cards */
+.today-hero {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.today-hero-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  transition: all var(--transition-fast);
+  animation: slideUp var(--transition-base) ease-out;
+  position: relative;
+  overflow: hidden;
+}
+
+.today-hero-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.today-hero-deliveries::before { background: var(--accent-start); }
+.today-hero-progress::before { background: var(--color-info); }
+.today-hero-pending::before { background: var(--color-warning); }
+.today-hero-overdue::before { background: var(--color-danger); }
+.today-hero-done::before { background: var(--color-success); }
+
+.today-hero-card:hover {
+  border-color: var(--glass-border);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.today-hero-overdue.has-overdue {
+  border-color: rgba(239, 68, 68, 0.25);
+  background: rgba(239, 68, 68, 0.04);
+  animation: slideUp var(--transition-base) ease-out, pulse 2s ease-in-out infinite;
+}
+
+.hero-card-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.hero-card-body {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.hero-card-value {
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  font-family: var(--font-mono);
+  line-height: 1;
+}
+
+.today-hero-deliveries .hero-card-value { color: var(--accent-start); }
+.today-hero-progress .hero-card-value { color: var(--color-info); }
+.today-hero-pending .hero-card-value { color: var(--color-warning); }
+.today-hero-overdue .hero-card-value { color: var(--color-danger); }
+.today-hero-done .hero-card-value { color: var(--color-success); }
+
+.hero-card-label {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+/* Shot chips inside hero cards */
+.hero-card-shots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+.hero-shot-chip {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  background: rgba(6, 182, 212, 0.12);
+  color: var(--accent-start);
+  white-space: nowrap;
+}
+
+.hero-shot-chip.more {
+  background: var(--bg-input);
+  color: var(--text-tertiary);
+}
+
+.hero-shot-chip.overdue {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--color-danger);
+}
+
+/* Section headers */
+.today-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-1) 0;
+  flex-shrink: 0;
+}
+
+.today-section-title {
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.today-section-count {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  background: var(--bg-elevated);
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-color);
+}
+
+/* Responsive: stack hero cards on narrow screens */
+@media (max-width: 1200px) {
+  .today-hero {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .today-hero {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
