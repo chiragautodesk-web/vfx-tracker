@@ -73,6 +73,7 @@ export default function TodayPage() {
     },
     { key: 'shotNumber', label: 'Shot #', width: 100, editable: true, type: 'text' },
     { key: 'shotName', label: 'Shot Name', width: 150, editable: true, type: 'text' },
+    { key: 'notes', label: 'Notes', width: 250, editable: true, type: 'text' },
     {
       key: 'projectId', label: 'Project', width: 150,
       editable: true, type: 'select',

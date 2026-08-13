@@ -23,7 +23,7 @@ export default function ShotsPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const emptyForm = {
-    shotNumber: '', shotName: '', description: '',
+    shotNumber: '', shotName: '', description: '', notes: '',
     projectId: state.selectedProjectId || (state.projects[0]?.id ?? ''),
     artistId: '',
     status: 'pending' as ShotStatus,
@@ -42,6 +42,7 @@ export default function ShotsPage() {
   const columns: ColumnDef<Shot>[] = useMemo(() => [
     { key: 'shotNumber', label: 'Shot #', width: 100, editable: true, type: 'text' },
     { key: 'shotName', label: 'Shot Name', width: 160, editable: true, type: 'text' },
+    { key: 'notes', label: 'Notes', width: 250, editable: true, type: 'text' },
     {
       key: 'projectId', label: 'Project', width: 160,
       editable: true, type: 'select',
@@ -110,6 +111,7 @@ export default function ShotsPage() {
       shotNumber: form.shotNumber.trim(),
       shotName: form.shotName.trim(),
       description: form.description.trim(),
+      notes: form.notes?.trim() || '',
       artistId: form.artistId,
       status: form.status,
       priority: form.priority,
@@ -248,6 +250,10 @@ export default function ShotsPage() {
         <div className="form-group">
           <label className="form-label">Description</label>
           <textarea className="form-input" rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Brief description…" />
+        </div>
+        <div className="form-group" style={{ marginTop: 'var(--space-3)' }}>
+          <label className="form-label">Notes</label>
+          <textarea className="form-input" rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Detail wise description exactly what to do..." />
         </div>
       </Modal>
 

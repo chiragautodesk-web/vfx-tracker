@@ -28,6 +28,7 @@ export default function StatusPage() {
   const columns: ColumnDef<Shot>[] = useMemo(() => [
     { key: 'shotNumber', label: 'Shot #', width: 100 },
     { key: 'shotName', label: 'Shot Name', width: 150 },
+    { key: 'notes', label: 'Notes', width: 250, editable: true, type: 'text' },
     {
       key: 'projectId', label: 'Project', width: 160,
       render: (row) => <span className="cell-text">{getProjectName(row.projectId)}</span>,
