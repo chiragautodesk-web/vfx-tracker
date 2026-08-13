@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useStore, useProjectName, useArtistName, useOverdueShots } from '../store';
 import type { Shot, ColumnDef } from '../types';
 import { DELIVERY_STATUS_OPTIONS } from '../types';
