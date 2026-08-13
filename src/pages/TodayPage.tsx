@@ -18,12 +18,14 @@ import { StatusBadge, DeliveryBadge, PriorityBadge } from '../components/StatusB
 import { useToast } from '../components/Toast';
 import { Rocket, RefreshCw, Hourglass, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import './TodayPage.css';
+import NotesModal from '../components/NotesModal';
 
 export default function TodayPage() {
   const { state, dispatch } = useStore();
   const { showToast } = useToast();
   const getProjectName = useProjectName();
   const getArtistName = useArtistName();
+  const [notesShot, setNotesShot] = useState<Shot | null>(null);
 
   const todayShots = useTodayShots();
   const todayDeliveries = useTodayDeliveries();
@@ -73,7 +75,20 @@ export default function TodayPage() {
     },
     { key: 'shotNumber', label: 'Shot #', width: 100, editable: true, type: 'text' },
     { key: 'shotName', label: 'Shot Name', width: 150, editable: true, type: 'text' },
-    { key: 'notes', label: 'Notes', width: 250, editable: true, type: 'text' },
+    {
+      key: 'notes', label: 'Notes', width: 250,
+      render: (row) => (
+        <button
+          className="btn btn-ghost btn-sm cell-text"
+          style={{ justifyContent: 'flex-start', width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '0 var(--space-2)' }}
+          onClick={(e) => { e.stopPropagation(); setNotesShot(row); }}
+          title={row.notes}
+        >
+          {row.notes ? row.notes : <span style={{ color: 'var(--text-muted)' }}>+ Add notes</span>}
+        </button>
+      ),
+      getValue: (row) => row.notes || '',
+    },
     {
       key: 'projectId', label: 'Project', width: 150,
       editable: true, type: 'select',
@@ -266,6 +281,7 @@ export default function TodayPage() {
           💡 <strong>Double-click</strong> any cell to edit • <strong>Mark Delivered</strong> to complete a task • All changes auto-save
         </div>
       </div>
+      <NotesModal shot={notesShot} onClose={() => setNotesShot(null)} />
     </div>
   );
 }

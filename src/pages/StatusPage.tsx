@@ -8,6 +8,7 @@ import TopBar from '../components/TopBar';
 import Modal from '../components/Modal';
 import { StatusBadge } from '../components/StatusBadge';
 import { useToast } from '../components/Toast';
+import NotesModal from '../components/NotesModal';
 
 export default function StatusPage() {
   const { state, dispatch } = useStore();
@@ -18,6 +19,7 @@ export default function StatusPage() {
 
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [feedbackShot, setFeedbackShot] = useState<Shot | null>(null);
+  const [notesShot, setNotesShot] = useState<Shot | null>(null);
   const [fbForm, setFbForm] = useState({ note: '', type: 'feedback' as ClientFeedback['type'] });
 
   const filteredShots = useMemo(() => {
@@ -28,7 +30,20 @@ export default function StatusPage() {
   const columns: ColumnDef<Shot>[] = useMemo(() => [
     { key: 'shotNumber', label: 'Shot #', width: 100 },
     { key: 'shotName', label: 'Shot Name', width: 150 },
-    { key: 'notes', label: 'Notes', width: 250, editable: true, type: 'text' },
+    {
+      key: 'notes', label: 'Notes', width: 250,
+      render: (row) => (
+        <button
+          className="btn btn-ghost btn-sm cell-text"
+          style={{ justifyContent: 'flex-start', width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '0 var(--space-2)' }}
+          onClick={(e) => { e.stopPropagation(); setNotesShot(row); }}
+          title={row.notes}
+        >
+          {row.notes ? row.notes : <span style={{ color: 'var(--text-muted)' }}>+ Add notes</span>}
+        </button>
+      ),
+      getValue: (row) => row.notes || '',
+    },
     {
       key: 'projectId', label: 'Project', width: 160,
       render: (row) => <span className="cell-text">{getProjectName(row.projectId)}</span>,
@@ -225,6 +240,8 @@ export default function StatusPage() {
           </>
         )}
       </Modal>
+
+      <NotesModal shot={notesShot} onClose={() => setNotesShot(null)} />
     </div>
   );
 }

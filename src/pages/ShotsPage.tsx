@@ -10,6 +10,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import { StatusBadge, DeliveryBadge, PriorityBadge } from '../components/StatusBadge';
 import { useToast } from '../components/Toast';
 import ExcelSyncModal from '../components/ExcelSyncModal';
+import NotesModal from '../components/NotesModal';
 
 export default function ShotsPage() {
   const { state, dispatch } = useStore();
@@ -21,6 +22,7 @@ export default function ShotsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [notesShot, setNotesShot] = useState<Shot | null>(null);
 
   const emptyForm = {
     shotNumber: '', shotName: '', description: '', notes: '',
@@ -42,7 +44,20 @@ export default function ShotsPage() {
   const columns: ColumnDef<Shot>[] = useMemo(() => [
     { key: 'shotNumber', label: 'Shot #', width: 100, editable: true, type: 'text' },
     { key: 'shotName', label: 'Shot Name', width: 160, editable: true, type: 'text' },
-    { key: 'notes', label: 'Notes', width: 250, editable: true, type: 'text' },
+    {
+      key: 'notes', label: 'Notes', width: 250,
+      render: (row) => (
+        <button
+          className="btn btn-ghost btn-sm cell-text"
+          style={{ justifyContent: 'flex-start', width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '0 var(--space-2)' }}
+          onClick={(e) => { e.stopPropagation(); setNotesShot(row); }}
+          title={row.notes}
+        >
+          {row.notes ? row.notes : <span style={{ color: 'var(--text-muted)' }}>+ Add notes</span>}
+        </button>
+      ),
+      getValue: (row) => row.notes || '',
+    },
     {
       key: 'projectId', label: 'Project', width: 160,
       editable: true, type: 'select',
@@ -280,6 +295,8 @@ export default function ShotsPage() {
         title="Delete Shot"
         message="Are you sure you want to delete this shot? This action cannot be undone."
       />
+
+      <NotesModal shot={notesShot} onClose={() => setNotesShot(null)} />
     </div>
   );
 }

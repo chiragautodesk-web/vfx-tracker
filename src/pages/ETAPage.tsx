@@ -7,6 +7,7 @@ import DataGrid from '../components/DataGrid';
 import TopBar from '../components/TopBar';
 import { DeliveryBadge } from '../components/StatusBadge';
 import { useToast } from '../components/Toast';
+import NotesModal from '../components/NotesModal';
 
 export default function ETAPage() {
   const { state, dispatch } = useStore();
@@ -14,6 +15,7 @@ export default function ETAPage() {
   const getProjectName = useProjectName();
   const getArtistName = useArtistName();
   const overdueShots = useOverdueShots();
+  const [notesShot, setNotesShot] = useState<Shot | null>(null);
 
   const onTrack = useMemo(() => {
     const todayStr = today();
@@ -35,7 +37,20 @@ export default function ETAPage() {
   const columns: ColumnDef<Shot>[] = useMemo(() => [
     { key: 'shotNumber', label: 'Shot #', width: 100 },
     { key: 'shotName', label: 'Shot Name', width: 150 },
-    { key: 'notes', label: 'Notes', width: 250, editable: true, type: 'text' },
+    {
+      key: 'notes', label: 'Notes', width: 250,
+      render: (row) => (
+        <button
+          className="btn btn-ghost btn-sm cell-text"
+          style={{ justifyContent: 'flex-start', width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '0 var(--space-2)' }}
+          onClick={(e) => { e.stopPropagation(); setNotesShot(row); }}
+          title={row.notes}
+        >
+          {row.notes ? row.notes : <span style={{ color: 'var(--text-muted)' }}>+ Add notes</span>}
+        </button>
+      ),
+      getValue: (row) => row.notes || '',
+    },
     {
       key: 'projectId', label: 'Project', width: 160,
       render: (row) => <span className="cell-text">{getProjectName(row.projectId)}</span>,
@@ -172,6 +187,7 @@ export default function ETAPage() {
           showCheckboxes={false}
         />
       </div>
+      <NotesModal shot={notesShot} onClose={() => setNotesShot(null)} />
     </div>
   );
 }
