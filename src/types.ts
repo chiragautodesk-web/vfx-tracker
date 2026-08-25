@@ -114,7 +114,7 @@ export interface ColumnDef<T> {
   sortable?: boolean;
   filterable?: boolean;
   editable?: boolean;
-  type?: 'text' | 'select' | 'date' | 'badge' | 'number' | 'readonly';
+  type?: 'text' | 'select' | 'date' | 'badge' | 'number' | 'readonly' | 'multiselect';
   options?: { value: string; label: string; color?: string }[];
   render?: (row: T) => React.ReactNode;
   getValue?: (row: T) => string;

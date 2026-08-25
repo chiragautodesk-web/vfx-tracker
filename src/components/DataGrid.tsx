@@ -28,7 +28,7 @@ export default function DataGrid<T extends { id: string }>({
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [editingCell, setEditingCell] = useState<{ rowId: string; colKey: string } | null>(null);
-  const [editValue, setEditValue] = useState('');
+  const [editValue, setEditValue] = useState<any>('');
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
   const resizingRef = useRef<{ colKey: string; startX: number; startWidth: number } | null>(null);
 
@@ -102,7 +102,7 @@ export default function DataGrid<T extends { id: string }>({
   };
 
   // Inline editing
-  const startEdit = (rowId: string, colKey: string, currentValue: string) => {
+  const startEdit = (rowId: string, colKey: string, currentValue: any) => {
     setEditingCell({ rowId, colKey });
     setEditValue(currentValue);
   };
@@ -269,16 +269,39 @@ export default function DataGrid<T extends { id: string }>({
                         <td
                           key={col.key}
                           className={`datagrid-td${col.editable ? ' editable' : ''}${isEditing ? ' editing' : ''}`}
-                          style={{ width: getColWidth(col) }}
+                          style={{ width: getColWidth(col), position: col.type === 'multiselect' && isEditing ? 'relative' : undefined }}
                           onDoubleClick={(e) => {
                             if (col.editable && !isEditing) {
                               e.stopPropagation();
-                              startEdit(row.id, col.key, String(rawValue ?? ''));
+                              startEdit(row.id, col.key, rawValue);
                             }
                           }}
                         >
                           {isEditing ? (
-                            col.type === 'select' && col.options ? (
+                            col.type === 'multiselect' && col.options ? (
+                              <div className="cell-edit-multiselect" style={{ position: 'absolute', top: '100%', left: 0, zIndex: 10, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: 'var(--space-2)', boxShadow: 'var(--shadow-md)', minWidth: '180px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <div style={{ maxHeight: '150px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  {col.options.map((opt) => (
+                                    <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: 'var(--text-sm)' }}>
+                                      <input
+                                        type="checkbox"
+                                        checked={Array.isArray(editValue) && editValue.includes(opt.value)}
+                                        onChange={(e) => {
+                                          const arr = Array.isArray(editValue) ? [...editValue] : [];
+                                          if (e.target.checked) setEditValue([...arr, opt.value]);
+                                          else setEditValue(arr.filter((v: string) => v !== opt.value));
+                                        }}
+                                      />
+                                      {opt.label}
+                                    </label>
+                                  ))}
+                                </div>
+                                <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+                                  <button className="btn btn-primary btn-sm" onClick={() => commitEdit(row)} style={{ flex: 1, padding: '4px' }}>Save</button>
+                                  <button className="btn btn-secondary btn-sm" onClick={cancelEdit} style={{ flex: 1, padding: '4px' }}>Cancel</button>
+                                </div>
+                              </div>
+                            ) : col.type === 'select' && col.options ? (
                               <select
                                 className="cell-edit-select"
                                 value={editValue}

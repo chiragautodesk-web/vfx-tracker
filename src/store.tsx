@@ -155,9 +155,15 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
 function getInitialState(): AppState {
   const saved = loadFromStorage();
   if (saved && saved.projects && saved.projects.length > 0) {
+    const migratedShots = saved.shots?.map((s: any) => {
+      if (s.artistId && !s.artistIds) return { ...s, artistIds: [s.artistId] };
+      if (!s.artistIds) return { ...s, artistIds: [] };
+      return s;
+    }) || [];
+
     return {
       projects: saved.projects ?? [],
-      shots: saved.shots ?? [],
+      shots: migratedShots,
       artists: saved.artists ?? [],
       activeTab: 'today',
       selectedProjectId: null,
@@ -251,8 +257,15 @@ function appReducer(state: AppState, action: AppAction): AppState {
       };
     }
 
-    case 'LOAD_STATE':
-      return { ...state, ...action.payload };
+    case 'LOAD_STATE': {
+      const stateData = action.payload as any;
+      const migratedShots = stateData.shots?.map((s: any) => {
+        if (s.artistId && !s.artistIds) return { ...s, artistIds: [s.artistId] };
+        if (!s.artistIds) return { ...s, artistIds: [] };
+        return s;
+      }) || [];
+      return { ...state, ...stateData, shots: migratedShots.length > 0 ? migratedShots : (stateData.shots || []) };
+    }
 
     default:
       return state;
@@ -343,7 +356,7 @@ export function useShotsByProject(projectId: string | null) {
 
 export function useShotsByArtist(artistId: string) {
   const { state } = useStore();
-  return state.shots.filter((s) => s.artistIds.includes(artistId));
+  return state.shots.filter((s) => s.artistIds && s.artistIds.includes(artistId));
 }
 
 export function useArtistById(artistId: string): Artist | undefined {

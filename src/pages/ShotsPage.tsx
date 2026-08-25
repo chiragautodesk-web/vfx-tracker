@@ -67,8 +67,9 @@ export default function ShotsPage() {
     },
     {
       key: 'artistIds', label: 'Artist', width: 150,
-      editable: false,
-      type: 'text',
+      editable: true,
+      type: 'multiselect',
+      options: state.artists.map((a) => ({ value: a.id, label: a.name })),
       render: (row) => {
         if (!row.artistIds || row.artistIds.length === 0) return <span className="cell-text" style={{ color: 'var(--text-muted)' }}>Unassigned</span>;
         
