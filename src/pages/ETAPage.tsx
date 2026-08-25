@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useStore, useProjectName, useArtistName, useOverdueShots } from '../store';
+import { useStore, useProjectName, useArtistNames, useOverdueShots } from '../store';
 import type { Shot, ColumnDef } from '../types';
 import { DELIVERY_STATUS_OPTIONS } from '../types';
 import { formatDate, daysRemainingText, daysRemainingSeverity, now, today } from '../utils';
@@ -13,7 +13,7 @@ export default function ETAPage() {
   const { state, dispatch } = useStore();
   const { showToast } = useToast();
   const getProjectName = useProjectName();
-  const getArtistName = useArtistName();
+  const getArtistNames = useArtistNames();
   const overdueShots = useOverdueShots();
   const [notesShot, setNotesShot] = useState<Shot | null>(null);
 
@@ -57,18 +57,26 @@ export default function ETAPage() {
       getValue: (row) => getProjectName(row.projectId),
     },
     {
-      key: 'artistId', label: 'Artist', width: 140,
+      key: 'artistIds', label: 'Artist', width: 140,
       render: (row) => {
-        const artist = state.artists.find((a) => a.id === row.artistId);
-        if (!artist) return <span className="cell-text" style={{ color: 'var(--text-muted)' }}>Unassigned</span>;
+        if (!row.artistIds || row.artistIds.length === 0) return <span className="cell-text" style={{ color: 'var(--text-muted)' }}>Unassigned</span>;
+        
         return (
-          <span className="artist-chip">
-            <span className="artist-avatar" style={{ background: artist.avatarColor }}>{artist.name.charAt(0)}</span>
-            {artist.name}
-          </span>
+          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', padding: '4px 0' }}>
+            {row.artistIds.map(id => {
+              const artist = state.artists.find((a) => a.id === id);
+              if (!artist) return null;
+              return (
+                <span key={id} className="artist-chip" style={{ margin: 0 }}>
+                  <span className="artist-avatar" style={{ background: artist.avatarColor }}>{artist.name.charAt(0)}</span>
+                  <span style={{ maxWidth: '60px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{artist.name.split(' ')[0]}</span>
+                </span>
+              );
+            })}
+          </div>
         );
       },
-      getValue: (row) => getArtistName(row.artistId),
+      getValue: (row) => getArtistNames(row.artistIds),
     },
     {
       key: 'eta', label: 'ETA Date', width: 120,
@@ -127,7 +135,7 @@ export default function ETAPage() {
         );
       },
     },
-  ], [getProjectName, getArtistName, state.artists, dispatch, showToast]);
+  ], [getProjectName, getArtistNames, state.artists, dispatch, showToast]);
 
   const handleRowUpdate = (row: Shot) => {
     dispatch({ type: 'UPDATE_SHOT', payload: { ...row, updatedAt: now() } });

@@ -45,7 +45,7 @@ export interface Shot {
   shotName: string;
   description: string;
   notes?: string;
-  artistId: string;
+  artistIds: string[];
   status: ShotStatus;
   priority: Priority;
   eta: string;

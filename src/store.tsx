@@ -59,7 +59,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     {
       id: 'shot-1', projectId: 'proj-1', shotNumber: 'DQ_010', shotName: 'Dragon Reveal',
       description: 'Full CG dragon emerging from mountain',
-      artistId: 'artist-1', status: 'in-progress', priority: 'critical',
+      artistIds: ['artist-1'], status: 'in-progress', priority: 'critical',
       eta: daysFromNow(0), finalDeliveryDate: daysFromNow(0), deliveryStatus: 'to-be-delivered',
       clientFeedback: [
         { id: 'fb-1', shotId: 'shot-1', date: daysFromNow(-3), note: 'Scale of dragon needs to be 20% larger', type: 'feedback' },
@@ -69,7 +69,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     {
       id: 'shot-2', projectId: 'proj-1', shotNumber: 'DQ_020', shotName: 'Dragon Flight',
       description: 'Dragon flying over canyon',
-      artistId: 'artist-2', status: 'wip', priority: 'high',
+      artistIds: ['artist-2'], status: 'wip', priority: 'high',
       eta: daysFromNow(0), finalDeliveryDate: daysFromNow(1), deliveryStatus: 'to-be-delivered',
       clientFeedback: [],
       createdAt: daysFromNow(-25) + 'T00:00:00Z', updatedAt: now(),
@@ -77,7 +77,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     {
       id: 'shot-3', projectId: 'proj-1', shotNumber: 'DQ_030', shotName: 'Fire Breath',
       description: 'Dragon fire breath FX with hero interaction',
-      artistId: 'artist-2', status: 'pending', priority: 'high',
+      artistIds: ['artist-2'], status: 'pending', priority: 'high',
       eta: daysFromNow(3), finalDeliveryDate: daysFromNow(5), deliveryStatus: 'pending',
       clientFeedback: [],
       createdAt: daysFromNow(-20) + 'T00:00:00Z', updatedAt: now(),
@@ -85,7 +85,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     {
       id: 'shot-4', projectId: 'proj-1', shotNumber: 'DQ_040', shotName: 'Dragon Landing',
       description: 'Dragon landing with ground impact FX',
-      artistId: 'artist-3', status: 'approved', priority: 'medium',
+      artistIds: ['artist-3'], status: 'approved', priority: 'medium',
       eta: daysFromNow(-2), finalDeliveryDate: daysFromNow(0), deliveryStatus: 'to-be-delivered',
       clientFeedback: [
         { id: 'fb-2', shotId: 'shot-4', date: daysFromNow(-1), note: 'Approved — great work on the dust simulation', type: 'feedback' },
@@ -95,7 +95,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     {
       id: 'shot-5', projectId: 'proj-2', shotNumber: 'CD_010', shotName: 'Building Collapse',
       description: 'Hero building collapse with debris',
-      artistId: 'artist-2', status: 'client-review', priority: 'critical',
+      artistIds: ['artist-2'], status: 'client-review', priority: 'critical',
       eta: daysFromNow(0), finalDeliveryDate: daysFromNow(0), deliveryStatus: 'to-be-delivered',
       clientFeedback: [
         { id: 'fb-3', shotId: 'shot-5', date: daysFromNow(-1), note: 'Dust cloud needs to linger longer — add 30 more frames', type: 'kickback' },
@@ -105,7 +105,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     {
       id: 'shot-6', projectId: 'proj-2', shotNumber: 'CD_020', shotName: 'Street Explosion',
       description: 'Street-level explosion with car flip',
-      artistId: 'artist-1', status: 'changes-required', priority: 'high',
+      artistIds: ['artist-1'], status: 'changes-required', priority: 'high',
       eta: daysFromNow(-1), finalDeliveryDate: daysFromNow(0), deliveryStatus: 'to-be-delivered',
       clientFeedback: [
         { id: 'fb-4', shotId: 'shot-6', date: daysFromNow(-2), note: 'Fire color is too orange, needs to be more blue at core', type: 'modification' },
@@ -115,7 +115,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     {
       id: 'shot-7', projectId: 'proj-2', shotNumber: 'CD_030', shotName: 'Aerial Shot',
       description: 'Aerial view of destruction aftermath',
-      artistId: 'artist-4', status: 'internal-review', priority: 'medium',
+      artistIds: ['artist-4'], status: 'internal-review', priority: 'medium',
       eta: daysFromNow(2), finalDeliveryDate: daysFromNow(4), deliveryStatus: 'pending',
       clientFeedback: [],
       createdAt: daysFromNow(-10) + 'T00:00:00Z', updatedAt: now(),
@@ -123,7 +123,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     {
       id: 'shot-8', projectId: 'proj-2', shotNumber: 'CD_040', shotName: 'Hero Rescue',
       description: 'Hero rescue sequence with falling debris',
-      artistId: 'artist-3', status: 'delivered', priority: 'low',
+      artistIds: ['artist-3'], status: 'delivered', priority: 'low',
       eta: daysFromNow(-5), finalDeliveryDate: daysFromNow(-5), deliveryStatus: 'delivered',
       clientFeedback: [],
       createdAt: daysFromNow(-10) + 'T00:00:00Z', updatedAt: now(),
@@ -131,7 +131,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     {
       id: 'shot-9', projectId: 'proj-3', shotNumber: 'UW_010', shotName: 'Deep Sea Dive',
       description: 'Camera dive into deep ocean environment',
-      artistId: 'artist-4', status: 'pending', priority: 'medium',
+      artistIds: ['artist-4'], status: 'pending', priority: 'medium',
       eta: daysFromNow(7), finalDeliveryDate: daysFromNow(10), deliveryStatus: 'pending',
       clientFeedback: [],
       createdAt: daysFromNow(-20) + 'T00:00:00Z', updatedAt: now(),
@@ -139,7 +139,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     {
       id: 'shot-10', projectId: 'proj-3', shotNumber: 'UW_020', shotName: 'Creature Encounter',
       description: 'Bioluminescent creature reveal',
-      artistId: 'artist-1', status: 'client-feedback', priority: 'high',
+      artistIds: ['artist-1'], status: 'client-feedback', priority: 'high',
       eta: daysFromNow(0), finalDeliveryDate: daysFromNow(1), deliveryStatus: 'pending',
       clientFeedback: [
         { id: 'fb-5', shotId: 'shot-10', date: daysFromNow(-2), note: 'Creature glow needs to pulse more rhythmically', type: 'kickback' },
@@ -343,7 +343,7 @@ export function useShotsByProject(projectId: string | null) {
 
 export function useShotsByArtist(artistId: string) {
   const { state } = useStore();
-  return state.shots.filter((s) => s.artistId === artistId);
+  return state.shots.filter((s) => s.artistIds.includes(artistId));
 }
 
 export function useArtistById(artistId: string): Artist | undefined {
@@ -414,10 +414,16 @@ export function useProjectName() {
   );
 }
 
-export function useArtistName() {
+export function useArtistNames() {
   const { state } = useStore();
   return useCallback(
-    (artistId: string) => state.artists.find((a) => a.id === artistId)?.name ?? 'Unassigned',
+    (artistIds: string[]) => {
+      if (!artistIds || artistIds.length === 0) return 'Unassigned';
+      return artistIds
+        .map(id => state.artists.find((a) => a.id === id)?.name)
+        .filter(Boolean)
+        .join(', ') || 'Unassigned';
+    },
     [state.artists]
   );
 }

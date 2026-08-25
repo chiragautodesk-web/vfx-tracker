@@ -28,7 +28,7 @@ export default function ArtistsPage() {
   const artistStats = useMemo(() => {
     const stats: Record<string, { total: number; inProgress: number; completed: number; pending: number }> = {};
     for (const artist of state.artists) {
-      const shots = state.shots.filter((s) => s.artistId === artist.id);
+      const shots = state.shots.filter((s) => s.artistIds && s.artistIds.includes(artist.id));
       stats[artist.id] = {
         total: shots.length,
         inProgress: shots.filter((s) => s.status === 'in-progress' || s.status === 'wip').length,
@@ -110,7 +110,7 @@ export default function ArtistsPage() {
 
   const artistShots = useMemo(() => {
     if (!expandedArtist) return [];
-    return state.shots.filter((s) => s.artistId === expandedArtist);
+    return state.shots.filter((s) => s.artistIds && s.artistIds.includes(expandedArtist));
   }, [expandedArtist, state.shots]);
 
   return (
@@ -120,7 +120,7 @@ export default function ArtistsPage() {
         subtitle={`${state.artists.length} total`}
         stats={[
           { label: 'Total Shots', value: state.shots.length },
-          { label: 'Unassigned', value: state.shots.filter((s) => !s.artistId).length, color: 'var(--color-warning)' },
+          { label: 'Unassigned', value: state.shots.filter((s) => !s.artistIds || s.artistIds.length === 0).length, color: 'var(--color-warning)' },
         ]}
         actions={
           <button className="btn btn-primary" onClick={() => { setForm(emptyForm); setShowAddModal(true); }}>

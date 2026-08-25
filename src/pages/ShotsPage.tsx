@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useStore, useProjectName, useArtistName } from '../store';
+import { useStore, useProjectName, useArtistNames } from '../store';
 import type { Shot, ColumnDef, ShotStatus, DeliveryStatus, Priority } from '../types';
 import { STATUS_OPTIONS, DELIVERY_STATUS_OPTIONS, PRIORITY_OPTIONS } from '../types';
 import { generateId, now, formatDate } from '../utils';
@@ -16,7 +16,7 @@ export default function ShotsPage() {
   const { state, dispatch } = useStore();
   const { showToast } = useToast();
   const getProjectName = useProjectName();
-  const getArtistName = useArtistName();
+  const getArtistNames = useArtistNames();
 
   const [filterProjectId, setFilterProjectId] = useState<string>(state.selectedProjectId || '');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -27,7 +27,7 @@ export default function ShotsPage() {
   const emptyForm = {
     shotNumber: '', shotName: '', description: '', notes: '',
     projectId: state.selectedProjectId || (state.projects[0]?.id ?? ''),
-    artistId: '',
+    artistIds: [] as string[],
     status: 'pending' as ShotStatus,
     priority: 'medium' as Priority,
     eta: '', finalDeliveryDate: '',
@@ -66,22 +66,28 @@ export default function ShotsPage() {
       getValue: (row) => getProjectName(row.projectId),
     },
     {
-      key: 'artistId', label: 'Artist', width: 150,
-      editable: true, type: 'select',
-      options: [{ value: '', label: 'Unassigned' }, ...state.artists.map((a) => ({ value: a.id, label: a.name }))],
+      key: 'artistIds', label: 'Artist', width: 150,
+      editable: false,
+      type: 'text',
       render: (row) => {
-        const artist = state.artists.find((a) => a.id === row.artistId);
-        if (!artist) return <span className="cell-text" style={{ color: 'var(--text-muted)' }}>Unassigned</span>;
+        if (!row.artistIds || row.artistIds.length === 0) return <span className="cell-text" style={{ color: 'var(--text-muted)' }}>Unassigned</span>;
+        
         return (
-          <span className="artist-chip">
-            <span className="artist-avatar" style={{ background: artist.avatarColor }}>
-              {artist.name.charAt(0)}
-            </span>
-            {artist.name}
-          </span>
+          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', padding: '4px 0' }}>
+            {row.artistIds.map(id => {
+              const artist = state.artists.find((a) => a.id === id);
+              if (!artist) return null;
+              return (
+                <span key={id} className="artist-chip" style={{ margin: 0 }}>
+                  <span className="artist-avatar" style={{ background: artist.avatarColor }}>{artist.name.charAt(0)}</span>
+                  <span style={{ maxWidth: '60px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{artist.name.split(' ')[0]}</span>
+                </span>
+              );
+            })}
+          </div>
         );
       },
-      getValue: (row) => getArtistName(row.artistId),
+      getValue: (row) => getArtistNames(row.artistIds),
     },
     {
       key: 'status', label: 'Status', width: 170,
@@ -116,7 +122,7 @@ export default function ShotsPage() {
       render: (row) => <span className="cell-text">{formatDate(row.finalDeliveryDate)}</span>,
       getValue: (row) => row.finalDeliveryDate,
     },
-  ], [state.projects, state.artists, getProjectName, getArtistName]);
+  ], [state.projects, state.artists, getProjectName, getArtistNames]);
 
   const handleAdd = () => {
     if (!form.shotNumber.trim() || !form.projectId) return;
@@ -127,7 +133,7 @@ export default function ShotsPage() {
       shotName: form.shotName.trim(),
       description: form.description.trim(),
       notes: form.notes?.trim() || '',
-      artistId: form.artistId,
+      artistIds: form.artistIds,
       status: form.status,
       priority: form.priority,
       eta: form.eta,
@@ -231,11 +237,29 @@ export default function ShotsPage() {
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label">Artist</label>
-            <select className="form-input" value={form.artistId} onChange={(e) => setForm({ ...form, artistId: e.target.value })}>
-              <option value="">Unassigned</option>
-              {state.artists.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
+            <label className="form-label">Artists</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '8px', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', maxHeight: '120px', overflowY: 'auto' }}>
+              {state.artists.map((a) => (
+                <label key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={form.artistIds.includes(a.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setForm({ ...form, artistIds: [...form.artistIds, a.id] });
+                      } else {
+                        setForm({ ...form, artistIds: form.artistIds.filter(id => id !== a.id) });
+                      }
+                    }}
+                  />
+                  <span className="artist-chip" style={{ margin: 0 }}>
+                    <span className="artist-avatar" style={{ background: a.avatarColor }}>{a.name.charAt(0)}</span>
+                    {a.name}
+                  </span>
+                </label>
+              ))}
+              {state.artists.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>No artists available</span>}
+            </div>
           </div>
         </div>
         <div className="form-row">

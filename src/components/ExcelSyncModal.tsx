@@ -17,7 +17,7 @@ const TRACKER_FIELDS = [
   { id: 'shotName', label: 'Shot Name' },
   { id: 'description', label: 'Description' },
   { id: 'notes', label: 'Notes' },
-  { id: 'artistName', label: 'Assigned Artist (Name)' },
+  { id: 'artistName', label: 'Assigned Artists (Names, comma separated)' },
   { id: 'status', label: 'Status' },
   { id: 'priority', label: 'Priority' },
   { id: 'eta', label: 'ETA Date' },
@@ -112,11 +112,13 @@ export default function ExcelSyncModal({ isOpen, onClose, project }: ExcelSyncMo
       
       excelShotNumbers.add(shotNumber);
       
-      let artistId = '';
+      let artistIds: string[] = [];
       if (mapping.artistName && row[mapping.artistName]) {
-        const aName = String(row[mapping.artistName]).trim().toLowerCase();
-        const artist = state.artists.find(a => a.name.toLowerCase() === aName);
-        if (artist) artistId = artist.id;
+        const aNames = String(row[mapping.artistName]).split(',').map(n => n.trim().toLowerCase()).filter(Boolean);
+        aNames.forEach(aName => {
+          const artist = state.artists.find(a => a.name.toLowerCase() === aName);
+          if (artist) artistIds.push(artist.id);
+        });
       }
 
       const rawStatus = mapping.status ? String(row[mapping.status]).trim().toLowerCase() : '';
@@ -149,7 +151,7 @@ export default function ExcelSyncModal({ isOpen, onClose, project }: ExcelSyncMo
       if (existing) {
         let changed = false;
         const newShot = { ...existing };
-        if (artistId && existing.artistId !== artistId) { newShot.artistId = artistId; changed = true; }
+        if (artistIds.length > 0 && JSON.stringify(existing.artistIds || []) !== JSON.stringify(artistIds)) { newShot.artistIds = artistIds; changed = true; }
         if (mapping.status && existing.status !== status) { newShot.status = status; changed = true; }
         if (eta && existing.eta !== eta) { newShot.eta = eta; changed = true; }
         if (notes && existing.notes !== notes) { newShot.notes = notes; changed = true; }
@@ -184,7 +186,7 @@ export default function ExcelSyncModal({ isOpen, onClose, project }: ExcelSyncMo
           shotName: shotName || shotNumber,
           description: desc,
           notes,
-          artistId,
+          artistIds,
           status,
           priority: 'medium',
           eta,
