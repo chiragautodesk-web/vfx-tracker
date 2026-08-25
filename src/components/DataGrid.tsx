@@ -7,6 +7,7 @@ interface DataGridProps<T extends { id: string }> {
   data: T[];
   onRowUpdate?: (row: T) => void;
   onRowDelete?: (id: string) => void;
+  onRowEditClick?: (row: T) => void;
   onRowClick?: (row: T) => void;
   onBulkDelete?: (ids: string[]) => void;
   emptyMessage?: string;
@@ -18,6 +19,7 @@ export default function DataGrid<T extends { id: string }>({
   data,
   onRowUpdate,
   onRowDelete,
+  onRowEditClick,
   onRowClick,
   onBulkDelete,
   emptyMessage = 'No data found',
@@ -200,7 +202,7 @@ export default function DataGrid<T extends { id: string }>({
                   />
                 </th>
               ))}
-              {onRowDelete && <th className="datagrid-th datagrid-action-col" />}
+              {(onRowDelete || onRowEditClick) && <th className="datagrid-th datagrid-action-col" />}
             </tr>
 
             {/* Filter row */}
@@ -219,7 +221,7 @@ export default function DataGrid<T extends { id: string }>({
                   )}
                 </th>
               ))}
-              {onRowDelete && <th className="datagrid-th datagrid-action-col" />}
+              {(onRowDelete || onRowEditClick) && <th className="datagrid-th datagrid-action-col" />}
             </tr>
           </thead>
 
@@ -227,7 +229,7 @@ export default function DataGrid<T extends { id: string }>({
             {processedData.length === 0 ? (
               <tr>
                 <td
-                  colSpan={columns.length + (showCheckboxes ? 1 : 0) + (onRowDelete ? 1 : 0)}
+                  colSpan={columns.length + (showCheckboxes ? 1 : 0) + ((onRowDelete || onRowEditClick) ? 1 : 0)}
                   className="datagrid-empty"
                 >
                   <div className="empty-state">
@@ -354,15 +356,28 @@ export default function DataGrid<T extends { id: string }>({
                         </td>
                       );
                     })}
-                    {onRowDelete && (
+                    {(onRowDelete || onRowEditClick) && (
                       <td className="datagrid-td datagrid-action-col" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          className="btn btn-ghost btn-icon row-delete-btn"
-                          onClick={() => onRowDelete(row.id)}
-                          title="Delete row"
-                        >
-                          🗑
-                        </button>
+                        <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
+                          {onRowEditClick && (
+                            <button
+                              className="btn btn-ghost btn-icon"
+                              onClick={() => onRowEditClick(row)}
+                              title="Edit row"
+                            >
+                              ✏️
+                            </button>
+                          )}
+                          {onRowDelete && (
+                            <button
+                              className="btn btn-ghost btn-icon row-delete-btn"
+                              onClick={() => onRowDelete(row.id)}
+                              title="Delete row"
+                            >
+                              🗑
+                            </button>
+                          )}
+                        </div>
                       </td>
                     )}
                   </tr>

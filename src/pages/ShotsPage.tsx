@@ -23,8 +23,10 @@ export default function ShotsPage() {
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [notesShot, setNotesShot] = useState<Shot | null>(null);
+  const [artistDropdownOpen, setArtistDropdownOpen] = useState(false);
 
   const emptyForm = {
+    id: '',
     shotNumber: '', shotName: '', description: '', notes: '',
     projectId: state.selectedProjectId || (state.projects[0]?.id ?? ''),
     artistIds: [] as string[],
@@ -144,10 +146,19 @@ export default function ShotsPage() {
       createdAt: now(),
       updatedAt: now(),
     };
-    dispatch({ type: 'ADD_SHOT', payload: shot });
-    showToast(`Shot "${shot.shotNumber}" added`);
+    if (form.id) {
+      // Edit existing
+      dispatch({ type: 'UPDATE_SHOT', payload: { ...shot, id: form.id, clientFeedback: state.shots.find(s => s.id === form.id)?.clientFeedback || [] } });
+      showToast(`Shot "${shot.shotNumber}" updated`);
+    } else {
+      // Add new
+      dispatch({ type: 'ADD_SHOT', payload: shot });
+      showToast(`Shot "${shot.shotNumber}" added`);
+    }
+    
     setShowAddModal(false);
     setForm(emptyForm);
+    setArtistDropdownOpen(false);
   };
 
   const handleRowUpdate = (row: Shot) => {
@@ -196,6 +207,7 @@ export default function ShotsPage() {
           columns={columns}
           data={filteredShots}
           onRowUpdate={handleRowUpdate}
+          onRowEditClick={(row) => { setForm({ ...emptyForm, ...row }); setShowAddModal(true); }}
           onRowDelete={(id) => setDeleteId(id)}
           onBulkDelete={(ids) => { dispatch({ type: 'DELETE_SHOTS', payload: ids }); showToast(`${ids.length} shots deleted`, 'error'); }}
           emptyMessage="No shots found — click 'Add Shot' to create one"
@@ -210,12 +222,12 @@ export default function ShotsPage() {
       <Modal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
-        title="Add New Shot"
+        title={form.id ? "Edit Shot" : "Add New Shot"}
         width="620px"
         footer={
           <>
             <button className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
-            <button className="btn btn-primary" onClick={handleAdd} disabled={!form.shotNumber.trim() || !form.projectId}>Add Shot</button>
+            <button className="btn btn-primary" onClick={handleAdd} disabled={!form.shotNumber.trim() || !form.projectId}>{form.id ? "Save Changes" : "Add Shot"}</button>
           </>
         }
       >
@@ -237,30 +249,40 @@ export default function ShotsPage() {
               {state.projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </div>
-          <div className="form-group">
+          <div className="form-group" style={{ position: 'relative' }}>
             <label className="form-label">Artists</label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '8px', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', maxHeight: '120px', overflowY: 'auto' }}>
-              {state.artists.map((a) => (
-                <label key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={form.artistIds.includes(a.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setForm({ ...form, artistIds: [...form.artistIds, a.id] });
-                      } else {
-                        setForm({ ...form, artistIds: form.artistIds.filter(id => id !== a.id) });
-                      }
-                    }}
-                  />
-                  <span className="artist-chip" style={{ margin: 0 }}>
-                    <span className="artist-avatar" style={{ background: a.avatarColor }}>{a.name.charAt(0)}</span>
-                    {a.name}
-                  </span>
-                </label>
-              ))}
-              {state.artists.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>No artists available</span>}
+            <div 
+              className="form-input" 
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+              onClick={() => setArtistDropdownOpen(!artistDropdownOpen)}
+            >
+              <span>{form.artistIds.length > 0 ? `${form.artistIds.length} artist(s) selected` : 'Select Artists...'}</span>
+              <span style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{artistDropdownOpen ? '▲' : '▼'}</span>
             </div>
+            {artistDropdownOpen && (
+              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: 'var(--space-2)', boxShadow: 'var(--shadow-md)', maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                {state.artists.map((a) => (
+                  <label key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '4px', borderRadius: 'var(--radius-sm)' }}>
+                    <input
+                      type="checkbox"
+                      checked={form.artistIds.includes(a.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setForm({ ...form, artistIds: [...form.artistIds, a.id] });
+                        } else {
+                          setForm({ ...form, artistIds: form.artistIds.filter(id => id !== a.id) });
+                        }
+                      }}
+                    />
+                    <span className="artist-chip" style={{ margin: 0 }}>
+                      <span className="artist-avatar" style={{ background: a.avatarColor }}>{a.name.charAt(0)}</span>
+                      {a.name}
+                    </span>
+                  </label>
+                ))}
+                {state.artists.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', padding: '4px' }}>No artists available</span>}
+              </div>
+            )}
           </div>
         </div>
         <div className="form-row">
