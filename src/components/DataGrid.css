@@ -229,6 +229,7 @@
   background: var(--bg-input);
   outline: 2px solid var(--accent-start);
   outline-offset: -2px;
+  overflow: visible;
 }
 
 .cell-text {

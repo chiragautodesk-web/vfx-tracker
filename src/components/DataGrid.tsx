@@ -281,7 +281,11 @@ export default function DataGrid<T extends { id: string }>({
                         >
                           {isEditing ? (
                             col.type === 'multiselect' && col.options ? (
-                              <div className="cell-edit-multiselect" style={{ position: 'absolute', top: '100%', left: 0, zIndex: 10, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: 'var(--space-2)', boxShadow: 'var(--shadow-md)', minWidth: '180px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <>
+                                <div style={{ padding: '0 var(--space-3)', height: '100%', display: 'flex', alignItems: 'center' }}>
+                                  <span className="cell-text">{displayValue}</span>
+                                </div>
+                                <div className="cell-edit-multiselect" style={{ position: 'absolute', top: '100%', left: 0, zIndex: 10, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: 'var(--space-2)', boxShadow: 'var(--shadow-md)', minWidth: '180px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                 <div style={{ maxHeight: '150px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                   {col.options.map((opt) => (
                                     <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: 'var(--text-sm)' }}>
@@ -302,7 +306,8 @@ export default function DataGrid<T extends { id: string }>({
                                   <button className="btn btn-primary btn-sm" onClick={() => commitEdit(row)} style={{ flex: 1, padding: '4px' }}>Save</button>
                                   <button className="btn btn-secondary btn-sm" onClick={cancelEdit} style={{ flex: 1, padding: '4px' }}>Cancel</button>
                                 </div>
-                              </div>
+                                </div>
+                              </>
                             ) : col.type === 'select' && col.options ? (
                               <select
                                 className="cell-edit-select"
