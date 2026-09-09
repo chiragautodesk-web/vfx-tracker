@@ -242,6 +242,19 @@ export default function ExcelSyncModal({ isOpen, onClose, project }: ExcelSyncMo
       type: 'SYNC_EXCEL_SHOTS',
       payload: { projectId: project.id, added: previewData.added, updated: previewData.updated }
     });
+
+    try {
+      localStorage.setItem('vfx-last-excel-sync', JSON.stringify({
+        timestamp: new Date().toISOString(),
+        projectName: project.name,
+        projectId: project.id,
+        addedCount: previewData.added.length,
+        updatedCount: previewData.updated.length,
+        totalShots: state.shots.length + previewData.added.length,
+        shots: [...previewData.updated, ...previewData.added]
+      }));
+    } catch { /* ignore */ }
+
     handleClose();
   };
 

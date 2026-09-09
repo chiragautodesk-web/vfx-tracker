@@ -12,11 +12,16 @@ function daysFromNow(offset: number): string {
 
 // ===== Local Storage =====
 const STORAGE_KEY = 'vfx-shot-tracker';
+const BACKUP_KEY = 'vfx-shot-tracker-backup';
 
 function loadFromStorage(): Partial<AppState> | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  try {
+    const backupRaw = localStorage.getItem(BACKUP_KEY);
+    if (backupRaw) return JSON.parse(backupRaw);
   } catch { /* ignore */ }
   return null;
 }
@@ -24,7 +29,17 @@ function loadFromStorage(): Partial<AppState> | null {
 function saveToStorage(state: AppState): void {
   try {
     const { projects, shots, artists } = state;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ projects, shots, artists }));
+    const payload = JSON.stringify({ 
+      projects, 
+      shots, 
+      artists,
+      lastSavedAt: new Date().toISOString()
+    });
+    localStorage.setItem(STORAGE_KEY, payload);
+    // Keep an autosave backup whenever we have shots
+    if (shots && shots.length > 0) {
+      localStorage.setItem(BACKUP_KEY, payload);
+    }
   } catch { /* ignore */ }
 }
 
@@ -268,14 +283,22 @@ function appReducer(state: AppState, action: AppAction): AppState {
       
       const newShots = state.shots.map((s) => {
         if (updatedIds.has(s.id)) {
-          return updated.find((u) => u.id === s.id) || s;
+          const u = updated.find((item) => item.id === s.id);
+          return u ? { ...u, department: parseDepartmentList(u.department), updatedAt: now() } : s;
         }
         return s;
       });
       
+      const normalizedAdded = added.map((a) => ({
+        ...a,
+        department: parseDepartmentList(a.department),
+        createdAt: a.createdAt || now(),
+        updatedAt: now(),
+      }));
+
       return {
         ...state,
-        shots: [...newShots, ...added],
+        shots: [...newShots, ...normalizedAdded],
       };
     }
 
@@ -314,8 +337,94 @@ function appReducer(state: AppState, action: AppAction): AppState {
 
     case 'LOAD_STATE': {
       const stateData = action.payload as any;
-      const migratedShots = stateData.shots?.map(migrateShot) || [];
-      return { ...state, ...stateData, shots: migratedShots.length > 0 ? migratedShots : (stateData.shots || []) };
+      if (!stateData) return state;
+
+      const remoteShots = (stateData.shots?.map(migrateShot) || []) as Shot[];
+      
+      // CRITICAL DATA PRESERVATION:
+      // Never discard local shots if remote has fewer shots or older state!
+      const remoteShotMap = new Map<string, Shot>();
+      for (const s of remoteShots) {
+        remoteShotMap.set(s.id, s);
+        if (s.shotName) remoteShotMap.set(s.shotName.trim().toLowerCase(), s);
+        if (s.shotNumber) remoteShotMap.set(s.shotNumber.trim().toLowerCase(), s);
+      }
+
+      const mergedShots: Shot[] = [];
+      const processedIds = new Set<string>();
+
+      // 1. Process all existing local shots: preserve local edits, departments, and newly synced shots!
+      for (const localShot of state.shots) {
+        processedIds.add(localShot.id);
+        const remote = remoteShotMap.get(localShot.id) ||
+          (localShot.shotName ? remoteShotMap.get(localShot.shotName.trim().toLowerCase()) : null) ||
+          (localShot.shotNumber ? remoteShotMap.get(localShot.shotNumber.trim().toLowerCase()) : null);
+
+        if (!remote) {
+          // Local shot not found in remote (e.g. from recent Excel sync or addition) -> ALWAYS KEEP IT!
+          mergedShots.push(localShot);
+        } else {
+          // Exists in both: compare update timestamps
+          const localTime = new Date(localShot.updatedAt || localShot.createdAt || 0).getTime();
+          const remoteTime = new Date(remote.updatedAt || remote.createdAt || 0).getTime();
+
+          const localDepts = parseDepartmentList(localShot.department);
+          const remoteDepts = parseDepartmentList(remote.department);
+
+          if (localTime >= remoteTime) {
+            // Local is newer or equal: preserve local fields & departments!
+            mergedShots.push({
+              ...localShot,
+              department: localDepts.length > 0 ? localDepts : remoteDepts,
+            });
+          } else {
+            // Remote is newer: use remote, but keep local departments if remote has none!
+            mergedShots.push({
+              ...remote,
+              department: remoteDepts.length > 0 ? remoteDepts : localDepts,
+            });
+          }
+        }
+      }
+
+      // 2. Append any remote shots that were not present locally
+      for (const remoteShot of remoteShots) {
+        if (!processedIds.has(remoteShot.id)) {
+          const matchByName = (remoteShot.shotName && state.shots.some(s => s.shotName?.trim().toLowerCase() === remoteShot.shotName?.trim().toLowerCase())) ||
+                              (remoteShot.shotNumber && state.shots.some(s => s.shotNumber?.trim().toLowerCase() === remoteShot.shotNumber?.trim().toLowerCase()));
+          if (!matchByName) {
+            mergedShots.push(remoteShot);
+            processedIds.add(remoteShot.id);
+          }
+        }
+      }
+
+      // Merge projects: keep all projects
+      const projectMap = new Map(state.projects.map(p => [p.id, p]));
+      if (Array.isArray(stateData.projects)) {
+        for (const rp of stateData.projects) {
+          if (!projectMap.has(rp.id)) {
+            projectMap.set(rp.id, rp);
+          }
+        }
+      }
+
+      // Merge artists: keep all artists
+      const artistMap = new Map(state.artists.map(a => [a.id, a]));
+      if (Array.isArray(stateData.artists)) {
+        for (const ra of stateData.artists) {
+          if (!artistMap.has(ra.id)) {
+            artistMap.set(ra.id, ra);
+          }
+        }
+      }
+
+      return {
+        ...state,
+        projects: Array.from(projectMap.values()),
+        shots: mergedShots.length > 0 ? mergedShots : state.shots,
+        artists: Array.from(artistMap.values()),
+      };
     }
 
     default:
@@ -334,27 +443,21 @@ const StoreContext = createContext<StoreContextValue | null>(null);
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, undefined, getInitialState);
 
-  // 1. Background remote sync from Supabase with non-blocking timeout
+  // 1. Background remote sync from Supabase with safe non-destructive resolution
   useEffect(() => {
     if (!supabase) return;
     
     let active = true;
     async function loadRemote() {
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000);
-
         const { data, error } = await supabase!
           .from('app_state')
           .select('data')
           .eq('id', 'global_state')
-          .abortSignal(controller.signal)
           .single();
-          
-        clearTimeout(timeoutId);
 
         if (error && error.code !== 'PGRST116') {
-          console.warn('Supabase remote sync bypassed:', error.message || error);
+          console.warn('Supabase remote load note:', error.message || error);
         }
         
         if (data && data.data && active) {
@@ -373,25 +476,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     // Save to local storage always as primary / reliable storage
     saveToStorage(state);
     
-    // Save to Supabase quietly in the background if configured
+    // Save to Supabase quietly in the background with debounce and without premature abort
     if (supabase) {
-      try {
-        const { projects, shots, artists } = state;
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
-        supabase.from('app_state').upsert({
-          id: 'global_state',
-          data: { projects, shots, artists },
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'id' })
-        .abortSignal(controller.signal)
-        .then(
-          () => clearTimeout(timeoutId),
-          () => clearTimeout(timeoutId)
-        );
-      } catch {
-        // silent
-      }
+      const timeoutId = setTimeout(async () => {
+        try {
+          const { projects, shots, artists } = state;
+          const { error } = await supabase!
+            .from('app_state')
+            .upsert({
+              id: 'global_state',
+              data: { projects, shots, artists },
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'id' });
+
+          if (error) {
+            console.warn('Supabase sync note:', error.message || error);
+          }
+        } catch {
+          // silent
+        }
+      }, 800);
+
+      return () => clearTimeout(timeoutId);
     }
   }, [state]);
 
