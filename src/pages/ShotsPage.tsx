@@ -1,16 +1,17 @@
 import { useState, useMemo } from 'react';
 import { useStore, useProjectName, useArtistNames } from '../store';
-import type { Shot, ColumnDef, ShotStatus, DeliveryStatus, Priority } from '../types';
-import { STATUS_OPTIONS, DELIVERY_STATUS_OPTIONS, PRIORITY_OPTIONS } from '../types';
+import type { Shot, ColumnDef, ShotStatus, DeliveryStatus, Priority, Department } from '../types';
+import { STATUS_OPTIONS, DELIVERY_STATUS_OPTIONS, PRIORITY_OPTIONS, DEPARTMENT_OPTIONS } from '../types';
 import { generateId, now, formatDate } from '../utils';
 import DataGrid from '../components/DataGrid';
 import TopBar from '../components/TopBar';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { StatusBadge, DeliveryBadge, PriorityBadge } from '../components/StatusBadge';
+import { StatusBadge, DeliveryBadge, PriorityBadge, DepartmentBadge } from '../components/StatusBadge';
 import { useToast } from '../components/Toast';
 import ExcelSyncModal from '../components/ExcelSyncModal';
 import NotesModal from '../components/NotesModal';
+import DataBackupModal from '../components/DataBackupModal';
 
 export default function ShotsPage() {
   const { state, dispatch } = useStore();
@@ -21,18 +22,24 @@ export default function ShotsPage() {
   const [filterProjectId, setFilterProjectId] = useState<string>(state.selectedProjectId || '');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSyncModal, setShowSyncModal] = useState(false);
+  const [showBackupModal, setShowBackupModal] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [notesShot, setNotesShot] = useState<Shot | null>(null);
   const [artistDropdownOpen, setArtistDropdownOpen] = useState(false);
 
   const emptyForm = {
     id: '',
-    shotNumber: '', shotName: '', description: '', notes: '',
+    shotName: '',
+    scopeOfWork: '',
+    department: 'Roto' as Department,
+    description: '',
+    notes: '',
     projectId: state.selectedProjectId || (state.projects[0]?.id ?? ''),
     artistIds: [] as string[],
     status: 'pending' as ShotStatus,
     priority: 'medium' as Priority,
-    eta: '', finalDeliveryDate: '',
+    eta: '',
+    finalDeliveryDate: '',
     deliveryStatus: 'pending' as DeliveryStatus,
   };
 
@@ -44,8 +51,38 @@ export default function ShotsPage() {
   }, [state.shots, filterProjectId]);
 
   const columns: ColumnDef<Shot>[] = useMemo(() => [
-    { key: 'shotNumber', label: 'Shot #', width: 100, editable: true, type: 'text' },
-    { key: 'shotName', label: 'Shot Name', width: 160, editable: true, type: 'text' },
+    {
+      key: 'shotName',
+      label: 'Shot Name',
+      width: 170,
+      editable: true,
+      type: 'text',
+      render: (row) => <span className="cell-text" style={{ fontWeight: 600 }}>{row.shotName || row.shotNumber}</span>,
+      getValue: (row) => row.shotName || row.shotNumber || '',
+    },
+    {
+      key: 'scopeOfWork',
+      label: 'Scope of Work',
+      width: 220,
+      editable: true,
+      type: 'text',
+      render: (row) => (
+        <span className="cell-text" title={row.scopeOfWork} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {row.scopeOfWork ? row.scopeOfWork : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+        </span>
+      ),
+      getValue: (row) => row.scopeOfWork || '',
+    },
+    {
+      key: 'department',
+      label: 'Department',
+      width: 160,
+      editable: true,
+      type: 'select',
+      options: DEPARTMENT_OPTIONS,
+      render: (row) => <DepartmentBadge department={row.department} />,
+      getValue: (row) => row.department || '',
+    },
     {
       key: 'notes', label: 'Notes', width: 250,
       render: (row) => (
@@ -128,12 +165,16 @@ export default function ShotsPage() {
   ], [state.projects, state.artists, getProjectName, getArtistNames]);
 
   const handleAdd = () => {
-    if (!form.shotNumber.trim() || !form.projectId) return;
+    if (!form.shotName.trim() || !form.projectId) return;
+    const shotName = form.shotName.trim();
+    const existing = form.id ? state.shots.find(s => s.id === form.id) : null;
     const shot: Shot = {
-      id: generateId(),
+      id: form.id || generateId(),
       projectId: form.projectId,
-      shotNumber: form.shotNumber.trim(),
-      shotName: form.shotName.trim(),
+      shotName,
+      shotNumber: existing?.shotNumber || shotName,
+      scopeOfWork: form.scopeOfWork.trim(),
+      department: form.department,
       description: form.description.trim(),
       notes: form.notes?.trim() || '',
       artistIds: form.artistIds,
@@ -142,18 +183,18 @@ export default function ShotsPage() {
       eta: form.eta,
       finalDeliveryDate: form.finalDeliveryDate,
       deliveryStatus: form.deliveryStatus,
-      clientFeedback: [],
-      createdAt: now(),
+      clientFeedback: existing?.clientFeedback || [],
+      createdAt: existing?.createdAt || now(),
       updatedAt: now(),
     };
     if (form.id) {
       // Edit existing
-      dispatch({ type: 'UPDATE_SHOT', payload: { ...shot, id: form.id, clientFeedback: state.shots.find(s => s.id === form.id)?.clientFeedback || [] } });
-      showToast(`Shot "${shot.shotNumber}" updated`);
+      dispatch({ type: 'UPDATE_SHOT', payload: shot });
+      showToast(`Shot "${shot.shotName}" updated`);
     } else {
       // Add new
       dispatch({ type: 'ADD_SHOT', payload: shot });
-      showToast(`Shot "${shot.shotNumber}" added`);
+      showToast(`Shot "${shot.shotName}" added`);
     }
     
     setShowAddModal(false);
@@ -176,6 +217,9 @@ export default function ShotsPage() {
         ]}
         actions={
           <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <button className="btn btn-secondary" onClick={() => setShowBackupModal(true)}>
+              📦 Export / Backup
+            </button>
             {filterProjectId && (
               <button className="btn btn-secondary" onClick={() => setShowSyncModal(true)}>
                 🔄 Sync / Update from Excel
@@ -207,7 +251,7 @@ export default function ShotsPage() {
           columns={columns}
           data={filteredShots}
           onRowUpdate={handleRowUpdate}
-          onRowEditClick={(row) => { setForm({ ...emptyForm, ...row }); setShowAddModal(true); }}
+          onRowEditClick={(row) => { setForm({ ...emptyForm, ...row, shotName: row.shotName || row.shotNumber || '', scopeOfWork: row.scopeOfWork || '', department: (row.department as Department) || 'Roto' }); setShowAddModal(true); }}
           onRowDelete={(id) => setDeleteId(id)}
           onBulkDelete={(ids) => { dispatch({ type: 'DELETE_SHOTS', payload: ids }); showToast(`${ids.length} shots deleted`, 'error'); }}
           emptyMessage="No shots found — click 'Add Shot' to create one"
@@ -227,18 +271,24 @@ export default function ShotsPage() {
         footer={
           <>
             <button className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
-            <button className="btn btn-primary" onClick={handleAdd} disabled={!form.shotNumber.trim() || !form.projectId}>{form.id ? "Save Changes" : "Add Shot"}</button>
+            <button className="btn btn-primary" onClick={handleAdd} disabled={!form.shotName.trim() || !form.projectId}>{form.id ? "Save Changes" : "Add Shot"}</button>
           </>
         }
       >
+        <div className="form-group">
+          <label className="form-label">Shot Name *</label>
+          <input className="form-input" value={form.shotName} onChange={(e) => setForm({ ...form, shotName: e.target.value })} placeholder="e.g., Dragon Chase / DQ_050" autoFocus />
+        </div>
         <div className="form-row">
           <div className="form-group">
-            <label className="form-label">Shot Number *</label>
-            <input className="form-input" value={form.shotNumber} onChange={(e) => setForm({ ...form, shotNumber: e.target.value })} placeholder="e.g., DQ_050" autoFocus />
+            <label className="form-label">Department</label>
+            <select className="form-input" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value as Department })}>
+              {DEPARTMENT_OPTIONS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
+            </select>
           </div>
           <div className="form-group">
-            <label className="form-label">Shot Name</label>
-            <input className="form-input" value={form.shotName} onChange={(e) => setForm({ ...form, shotName: e.target.value })} placeholder="e.g., Dragon Chase" />
+            <label className="form-label">Scope of Work</label>
+            <input className="form-input" value={form.scopeOfWork} onChange={(e) => setForm({ ...form, scopeOfWork: e.target.value })} placeholder="e.g., Edge roto / Camera solve / Clean plate" />
           </div>
         </div>
         <div className="form-row">
@@ -336,7 +386,7 @@ export default function ShotsPage() {
           if (deleteId) {
             const shot = state.shots.find((s) => s.id === deleteId);
             dispatch({ type: 'DELETE_SHOT', payload: deleteId });
-            showToast(`Shot "${shot?.shotNumber}" deleted`, 'error');
+            showToast(`Shot "${shot?.shotName || shot?.shotNumber}" deleted`, 'error');
           }
         }}
         title="Delete Shot"
@@ -344,6 +394,7 @@ export default function ShotsPage() {
       />
 
       <NotesModal shot={notesShot} onClose={() => setNotesShot(null)} />
+      <DataBackupModal isOpen={showBackupModal} onClose={() => setShowBackupModal(false)} />
     </div>
   );
 }

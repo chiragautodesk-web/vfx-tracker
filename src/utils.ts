@@ -1,5 +1,6 @@
-import { STATUS_OPTIONS, DELIVERY_STATUS_OPTIONS, PRIORITY_OPTIONS, PROJECT_STATUS_OPTIONS } from './types';
-import type { ShotStatus, DeliveryStatus, Priority, Project } from './types';
+import { STATUS_OPTIONS, DELIVERY_STATUS_OPTIONS, PRIORITY_OPTIONS, PROJECT_STATUS_OPTIONS, DEPARTMENT_OPTIONS } from './types';
+import type { ShotStatus, DeliveryStatus, Priority, Project, Shot, Artist } from './types';
+import * as XLSX from 'xlsx';
 
 /** Generate a unique ID */
 export function generateId(): string {
@@ -41,6 +42,18 @@ export function getStatusLabel(value: ShotStatus): string {
 /** Get status color from value */
 export function getStatusColor(value: ShotStatus): string {
   return STATUS_OPTIONS.find((s) => s.value === value)?.color ?? '#64748b';
+}
+
+/** Get department label */
+export function getDepartmentLabel(value?: string): string {
+  if (!value) return '—';
+  return DEPARTMENT_OPTIONS.find((d) => d.value === value)?.label ?? value;
+}
+
+/** Get department color */
+export function getDepartmentColor(value?: string): string {
+  if (!value) return '#64748b';
+  return DEPARTMENT_OPTIONS.find((d) => d.value === value)?.color ?? '#64748b';
 }
 
 /** Get delivery status label */
@@ -153,3 +166,75 @@ export function downloadCSV(csv: string, filename: string): void {
   link.click();
   URL.revokeObjectURL(url);
 }
+
+/** Trigger JSON download in browser */
+export function downloadJSON(data: unknown, filename: string): void {
+  const jsonStr = JSON.stringify(data, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+/** Export entire tracker dataset to an Excel (.xlsx) workbook with multiple sheets */
+export function exportFullBackupToExcel(
+  projects: Project[],
+  shots: Shot[],
+  artists: Artist[],
+  filename = `VFX_Tracker_Backup_${today()}.xlsx`
+): void {
+  const projectMap = new Map(projects.map((p) => [p.id, p.name]));
+  const artistMap = new Map(artists.map((a) => [a.id, a.name]));
+
+  // Sheet 1: Shots
+  const shotsData = shots.map((s) => ({
+    'Shot Name': s.shotName || s.shotNumber || '—',
+    'Scope of Work': s.scopeOfWork || '—',
+    'Department': s.department || '—',
+    'Project': projectMap.get(s.projectId) || s.projectId,
+    'Status': getStatusLabel(s.status),
+    'Priority': getPriorityLabel(s.priority),
+    'Assigned Artists': (s.artistIds || []).map((id) => artistMap.get(id) || id).join(', ') || 'Unassigned',
+    'ETA Date': s.eta ? formatDate(s.eta) : '—',
+    'Final Delivery Date': s.finalDeliveryDate ? formatDate(s.finalDeliveryDate) : '—',
+    'Delivery Status': getDeliveryStatusLabel(s.deliveryStatus),
+    'Notes': s.notes || '—',
+    'Description': s.description || '—',
+    'Client Feedback': (s.clientFeedback || []).map((f) => `[${f.date}] (${f.type}) ${f.note}`).join(' | ') || 'None',
+  }));
+
+  // Sheet 2: Projects
+  const projectsData = projects.map((p) => ({
+    'Project Name': p.name,
+    'Client': p.client,
+    'Status': getProjectStatusLabel(p.status),
+    'Description': p.description,
+    'Created At': formatDate(p.createdAt),
+    'Total Shots': shots.filter((s) => s.projectId === p.id).length,
+  }));
+
+  // Sheet 3: Artists
+  const artistsData = artists.map((a) => ({
+    'Artist Name': a.name,
+    'Role': a.role,
+    'Email': a.email,
+    'Assigned Shots Count': shots.filter((s) => s.artistIds?.includes(a.id)).length,
+  }));
+
+  const wb = XLSX.utils.book_new();
+
+  const wsShots = XLSX.utils.json_to_sheet(shotsData);
+  XLSX.utils.book_append_sheet(wb, wsShots, 'Shots');
+
+  const wsProjects = XLSX.utils.json_to_sheet(projectsData);
+  XLSX.utils.book_append_sheet(wb, wsProjects, 'Projects');
+
+  const wsArtists = XLSX.utils.json_to_sheet(artistsData);
+  XLSX.utils.book_append_sheet(wb, wsArtists, 'Artists');
+
+  XLSX.writeFile(wb, filename);
+}
+

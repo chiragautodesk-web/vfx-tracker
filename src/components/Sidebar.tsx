@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useStore } from '../store';
 import type { TabId } from '../types';
 import { 
@@ -8,9 +8,11 @@ import {
   BarChart3, 
   CalendarDays, 
   Users,
-  Box
+  Box,
+  Download
 } from 'lucide-react';
 import './Sidebar.css';
+import DataBackupModal from './DataBackupModal';
 
 const NAV_ITEMS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'today',    label: 'Today',    icon: <Zap size={18} /> },
@@ -23,6 +25,7 @@ const NAV_ITEMS: { id: TabId; label: string; icon: React.ReactNode }[] = [
 
 export default function Sidebar() {
   const { state, dispatch } = useStore();
+  const [showBackupModal, setShowBackupModal] = useState(false);
 
   const todayDate = new Date().toLocaleDateString('en-IN', {
     weekday: 'short',
@@ -62,9 +65,22 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="sidebar-footer">
-        <div className="sidebar-version">v2.1.0 — Corporate Edition</div>
+      <div style={{ padding: '0 var(--space-3)', marginTop: 'auto', marginBottom: 'var(--space-2)' }}>
+        <button
+          className="btn btn-secondary btn-sm"
+          style={{ width: '100%', justifyContent: 'center', gap: '6px', fontSize: 'var(--text-xs)', padding: '6px 8px' }}
+          onClick={() => setShowBackupModal(true)}
+          title="Export Old Data & Start Fresh"
+        >
+          <Download size={14} /> Backup & Export
+        </button>
       </div>
+
+      <div className="sidebar-footer">
+        <div className="sidebar-version">v2.2.0 — Production Suite</div>
+      </div>
+
+      <DataBackupModal isOpen={showBackupModal} onClose={() => setShowBackupModal(false)} />
     </aside>
   );
 }

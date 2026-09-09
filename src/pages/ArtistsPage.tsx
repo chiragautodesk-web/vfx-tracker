@@ -7,7 +7,7 @@ import DataGrid from '../components/DataGrid';
 import TopBar from '../components/TopBar';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { StatusBadge } from '../components/StatusBadge';
+import { StatusBadge, DepartmentBadge } from '../components/StatusBadge';
 import { useToast } from '../components/Toast';
 
 const AVATAR_COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#f97316'];
@@ -95,7 +95,7 @@ export default function ArtistsPage() {
       id: generateId(),
       name: form.name.trim(),
       email: form.email.trim(),
-      role: form.role.trim(),
+      role: form.role.trim() || 'Artist',
       avatarColor: AVATAR_COLORS[state.artists.length % AVATAR_COLORS.length],
     };
     dispatch({ type: 'ADD_ARTIST', payload: artist });
@@ -117,10 +117,10 @@ export default function ArtistsPage() {
     <div className="page">
       <TopBar
         title="Artists"
-        subtitle={`${state.artists.length} total`}
+        subtitle={`${state.artists.length} team members`}
         stats={[
-          { label: 'Total Shots', value: state.shots.length },
-          { label: 'Unassigned', value: state.shots.filter((s) => !s.artistIds || s.artistIds.length === 0).length, color: 'var(--color-warning)' },
+          { label: 'Total Artists', value: state.artists.length },
+          { label: 'Active Shots', value: state.shots.filter((s) => s.status !== 'delivered').length, color: 'var(--color-info)' },
         ]}
         actions={
           <button className="btn btn-primary" onClick={() => { setForm(emptyForm); setShowAddModal(true); }}>
@@ -155,10 +155,16 @@ export default function ArtistsPage() {
                 {artistShots.map((shot) => (
                   <div key={shot.id} className="artist-shot-card">
                     <div className="artist-shot-card-header">
-                      <span className="artist-shot-name">{shot.shotNumber}</span>
-                      <StatusBadge status={shot.status} />
+                      <span className="artist-shot-name">{shot.shotName || shot.shotNumber}</span>
+                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                        {shot.department && <DepartmentBadge department={shot.department} />}
+                        <StatusBadge status={shot.status} />
+                      </div>
                     </div>
-                    <span className="artist-shot-project">{getProjectName(shot.projectId)} — {shot.shotName}</span>
+                    <span className="artist-shot-project">
+                      {getProjectName(shot.projectId)}
+                      {shot.scopeOfWork ? ` • ${shot.scopeOfWork}` : ''}
+                    </span>
                     <div className="artist-shot-meta">
                       <span>ETA: {formatDate(shot.eta)}</span>
                       <span>Delivery: {formatDate(shot.finalDeliveryDate)}</span>

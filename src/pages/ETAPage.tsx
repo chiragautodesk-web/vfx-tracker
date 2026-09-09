@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useStore, useProjectName, useArtistNames, useOverdueShots } from '../store';
 import type { Shot, ColumnDef } from '../types';
-import { DELIVERY_STATUS_OPTIONS } from '../types';
+import { DELIVERY_STATUS_OPTIONS, DEPARTMENT_OPTIONS } from '../types';
 import { formatDate, daysRemainingText, daysRemainingSeverity, now, today } from '../utils';
 import DataGrid from '../components/DataGrid';
 import TopBar from '../components/TopBar';
-import { DeliveryBadge } from '../components/StatusBadge';
+import { DeliveryBadge, DepartmentBadge } from '../components/StatusBadge';
 import { useToast } from '../components/Toast';
 import NotesModal from '../components/NotesModal';
 
@@ -35,8 +35,32 @@ export default function ETAPage() {
   }, [state.shots]);
 
   const columns: ColumnDef<Shot>[] = useMemo(() => [
-    { key: 'shotNumber', label: 'Shot #', width: 100 },
-    { key: 'shotName', label: 'Shot Name', width: 150 },
+    {
+      key: 'shotName',
+      label: 'Shot Name',
+      width: 160,
+      render: (row) => <span className="cell-text" style={{ fontWeight: 600 }}>{row.shotName || row.shotNumber}</span>,
+      getValue: (row) => row.shotName || row.shotNumber || '',
+    },
+    {
+      key: 'scopeOfWork',
+      label: 'Scope of Work',
+      width: 200,
+      render: (row) => (
+        <span className="cell-text" title={row.scopeOfWork} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {row.scopeOfWork ? row.scopeOfWork : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+        </span>
+      ),
+      getValue: (row) => row.scopeOfWork || '',
+    },
+    {
+      key: 'department',
+      label: 'Department',
+      width: 150,
+      options: DEPARTMENT_OPTIONS,
+      render: (row) => <DepartmentBadge department={row.department} />,
+      getValue: (row) => row.department || '',
+    },
     {
       key: 'notes', label: 'Notes', width: 250,
       render: (row) => (
@@ -127,7 +151,7 @@ export default function ETAPage() {
                 type: 'UPDATE_SHOT',
                 payload: { ...row, deliveryStatus: 'delivered', finalDeliveryDate: row.finalDeliveryDate || today(), updatedAt: now() },
               });
-              showToast(`${row.shotNumber} marked as delivered`, 'success');
+              showToast(`${row.shotName || row.shotNumber} marked as delivered`, 'success');
             }}
           >
             Mark Delivered

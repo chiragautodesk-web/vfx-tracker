@@ -13,8 +13,9 @@ interface ExcelSyncModalProps {
 }
 
 const TRACKER_FIELDS = [
-  { id: 'shotNumber', label: 'Shot Number (Identifier)' },
-  { id: 'shotName', label: 'Shot Name' },
+  { id: 'shotName', label: 'Shot Name (Identifier)' },
+  { id: 'scopeOfWork', label: 'Scope of Work' },
+  { id: 'department', label: 'Department (Roto, Camera Tracking, Object Tracking, Prep)' },
   { id: 'description', label: 'Description' },
   { id: 'notes', label: 'Notes' },
   { id: 'artistName', label: 'Assigned Artists (Names, comma separated)' },
@@ -77,14 +78,16 @@ export default function ExcelSyncModal({ isOpen, onClose, project }: ExcelSyncMo
            const headers = Object.keys(data[0] as object);
            headers.forEach(h => {
              const hLower = h.toLowerCase();
-             if (hLower.includes('shot no') || hLower.includes('shot number')) newMap['shotNumber'] = h;
-             else if (hLower.includes('name')) newMap['shotName'] = h;
+             if (hLower.includes('shot name') || hLower.includes('shot no') || hLower.includes('shot number') || hLower === 'shot' || hLower === 'shots') newMap['shotName'] = h;
+             else if (hLower.includes('scope')) newMap['scopeOfWork'] = h;
+             else if (hLower.includes('dept') || hLower.includes('department') || hLower.includes('work type')) newMap['department'] = h;
              else if (hLower.includes('notes')) newMap['notes'] = h;
              else if (hLower.includes('artist')) newMap['artistName'] = h;
              else if (hLower.includes('status')) newMap['status'] = h;
              else if (hLower.includes('eta')) newMap['eta'] = h;
              else if (hLower.includes('delivery')) newMap['finalDeliveryDate'] = h;
              else if (hLower.includes('feedback') || hLower.includes('note')) newMap['clientFeedback'] = h;
+             else if (hLower.includes('desc')) newMap['description'] = h;
            });
         }
         setMapping(newMap);
@@ -95,8 +98,9 @@ export default function ExcelSyncModal({ isOpen, onClose, project }: ExcelSyncMo
   };
 
   const generatePreview = () => {
-    if (!mapping.shotNumber) {
-      alert("You must map a column to Shot Number (Identifier).");
+    const shotCol = mapping.shotName || mapping.shotNumber;
+    if (!shotCol) {
+      alert("You must map a column to Shot Name (Identifier).");
       return;
     }
 
@@ -104,13 +108,13 @@ export default function ExcelSyncModal({ isOpen, onClose, project }: ExcelSyncMo
     const added: Shot[] = [];
     const updated: Shot[] = [];
     let noChangeCount = 0;
-    const excelShotNumbers = new Set<string>();
+    const excelShotNames = new Set<string>();
 
     excelData.forEach(row => {
-      const shotNumber = String(row[mapping.shotNumber] || '').trim();
-      if (!shotNumber) return;
+      const shotIdentifier = String(row[shotCol] || '').trim();
+      if (!shotIdentifier) return;
       
-      excelShotNumbers.add(shotNumber);
+      excelShotNames.add(shotIdentifier.toLowerCase());
       
       let artistIds: string[] = [];
       if (mapping.artistName && row[mapping.artistName]) {
@@ -142,11 +146,16 @@ export default function ExcelSyncModal({ isOpen, onClose, project }: ExcelSyncMo
 
       const eta = mapping.eta ? rawDate(row[mapping.eta]) : '';
       const finalDel = mapping.finalDeliveryDate ? rawDate(row[mapping.finalDeliveryDate]) : '';
+      const scopeOfWork = mapping.scopeOfWork ? String(row[mapping.scopeOfWork] || '').trim() : '';
+      const department = mapping.department ? String(row[mapping.department] || '').trim() : '';
       const shotName = mapping.shotName ? String(row[mapping.shotName]) : '';
       const desc = mapping.description ? String(row[mapping.description]) : '';
       const notes = mapping.notes ? String(row[mapping.notes]) : '';
       
-      const existing = existingShots.find(s => s.shotNumber === shotNumber);
+      const existing = existingShots.find(s => 
+        (s.shotName && s.shotName.toLowerCase() === shotIdentifier.toLowerCase()) || 
+        (s.shotNumber && s.shotNumber.toLowerCase() === shotIdentifier.toLowerCase())
+      );
 
       if (existing) {
         let changed = false;
@@ -156,6 +165,8 @@ export default function ExcelSyncModal({ isOpen, onClose, project }: ExcelSyncMo
         if (eta && existing.eta !== eta) { newShot.eta = eta; changed = true; }
         if (notes && existing.notes !== notes) { newShot.notes = notes; changed = true; }
         if (finalDel && existing.finalDeliveryDate !== finalDel) { newShot.finalDeliveryDate = finalDel; changed = true; }
+        if (scopeOfWork && existing.scopeOfWork !== scopeOfWork) { newShot.scopeOfWork = scopeOfWork; changed = true; }
+        if (department && existing.department !== department) { newShot.department = department; changed = true; }
         
         if (mapping.clientFeedback && row[mapping.clientFeedback]) {
            const note = String(row[mapping.clientFeedback]).trim();
@@ -182,8 +193,10 @@ export default function ExcelSyncModal({ isOpen, onClose, project }: ExcelSyncMo
         added.push({
           id: generateId(),
           projectId: project.id,
-          shotNumber,
-          shotName: shotName || shotNumber,
+          shotNumber: shotIdentifier,
+          shotName: shotName || shotIdentifier,
+          scopeOfWork,
+          department: department || 'Roto',
           description: desc,
           notes,
           artistIds,
@@ -199,7 +212,10 @@ export default function ExcelSyncModal({ isOpen, onClose, project }: ExcelSyncMo
       }
     });
 
-    const missingCount = existingShots.filter(s => !excelShotNumbers.has(s.shotNumber)).length;
+    const missingCount = existingShots.filter(s => 
+      !excelShotNames.has((s.shotName || '').toLowerCase()) && 
+      !excelShotNames.has((s.shotNumber || '').toLowerCase())
+    ).length;
 
     setPreviewData({ added, updated, missing: missingCount, noChange: noChangeCount });
     
@@ -221,24 +237,44 @@ export default function ExcelSyncModal({ isOpen, onClose, project }: ExcelSyncMo
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={`Sync Excel for ${project.name}`}>
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title={`Sync Shots from Excel — ${project.name}`}
+      width="680px"
+    >
       {step === 'upload' && (
         <div className="sync-upload-step">
-          <p>Upload the latest Excel file from the client to sync shot statuses, ETAs, and artist assignments.</p>
-          <input type="file" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} ref={fileInputRef} className="form-input" style={{ marginTop: 'var(--space-4)' }} />
+          <p className="sync-desc">
+            Upload a spreadsheet (.xlsx, .xls) containing shot listings. The tracker will map your columns to track names, scopes, departments, and dates.
+          </p>
+          <div className="upload-dropzone" onClick={() => fileInputRef.current?.click()}>
+             <input 
+               ref={fileInputRef} 
+               type="file" 
+               accept=".xlsx, .xls" 
+               style={{ display: 'none' }} 
+               onChange={handleFileUpload} 
+             />
+             <div className="dropzone-icon">📁</div>
+             <div className="dropzone-text">Click or drag Excel file to upload</div>
+             <div className="dropzone-sub">Supported formats: .xlsx, .xls</div>
+          </div>
         </div>
       )}
 
       {step === 'map' && (
         <div className="sync-map-step">
-          <p className="sync-instruction">Map the Tracker Fields to the columns found in your Excel file.</p>
+          <p className="sync-desc">
+            Map columns from your Excel file to tracker fields. <strong>Shot Name (Identifier)</strong> is required.
+          </p>
           <div className="mapping-grid">
             <div className="mapping-header">Tracker Field</div>
             <div className="mapping-header">Excel Column</div>
             
             {TRACKER_FIELDS.map(field => (
               <React.Fragment key={field.id}>
-                <div className="mapping-label">{field.label} {field.id === 'shotNumber' && <span style={{color: 'var(--color-danger)'}}>*</span>}</div>
+                <div className="mapping-label">{field.label} {field.id === 'shotName' && <span style={{color: 'var(--color-danger)'}}>*</span>}</div>
                 <select 
                   className="form-input" 
                   value={mapping[field.id] || ''}
@@ -284,7 +320,7 @@ export default function ExcelSyncModal({ isOpen, onClose, project }: ExcelSyncMo
                <div>
                  <h4>Added:</h4>
                  <div className="sync-chips">
-                   {previewData.added.map(s => <span key={s.id} className="sync-chip new">{s.shotNumber}</span>)}
+                   {previewData.added.map(s => <span key={s.id} className="sync-chip new">{s.shotName || s.shotNumber}</span>)}
                  </div>
                </div>
              )}
@@ -292,7 +328,7 @@ export default function ExcelSyncModal({ isOpen, onClose, project }: ExcelSyncMo
                <div style={{ marginTop: 'var(--space-3)' }}>
                  <h4>Updated:</h4>
                  <div className="sync-chips">
-                   {previewData.updated.map(s => <span key={s.id} className="sync-chip update">{s.shotNumber}</span>)}
+                   {previewData.updated.map(s => <span key={s.id} className="sync-chip update">{s.shotName || s.shotNumber}</span>)}
                  </div>
                </div>
              )}

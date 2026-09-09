@@ -9,12 +9,14 @@ import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { ProjectStatusBadge } from '../components/StatusBadge';
 import { useToast } from '../components/Toast';
+import DataBackupModal from '../components/DataBackupModal';
 import './ProjectsPage.css';
 
 export default function ProjectsPage() {
   const { state, dispatch } = useStore();
   const { showToast } = useToast();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showBackupModal, setShowBackupModal] = useState(false);
   const [editProject, setEditProject] = useState<Project | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -122,9 +124,14 @@ export default function ProjectsPage() {
           { label: 'Total Shots', value: state.shots.length },
         ]}
         actions={
-          <button className="btn btn-primary" onClick={() => { resetForm(); setShowAddModal(true); }}>
-            + Add Project
-          </button>
+          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <button className="btn btn-secondary" onClick={() => setShowBackupModal(true)}>
+              📦 Export Old Data / Start Fresh
+            </button>
+            <button className="btn btn-primary" onClick={() => { resetForm(); setShowAddModal(true); }}>
+              + Add Project
+            </button>
+          </div>
         }
       />
 
@@ -233,6 +240,8 @@ export default function ProjectsPage() {
         title="Delete Project"
         message="Are you sure? This will also delete all shots associated with this project. This action cannot be undone."
       />
+
+      <DataBackupModal isOpen={showBackupModal} onClose={() => setShowBackupModal(false)} />
     </div>
   );
 }

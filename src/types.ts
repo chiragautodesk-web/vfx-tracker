@@ -38,11 +38,15 @@ export interface ClientFeedback {
   type: 'kickback' | 'modification' | 'feedback';
 }
 
+export type Department = 'Roto' | 'Camera Tracking' | 'Object Tracking' | 'Prep';
+
 export interface Shot {
   id: string;
   projectId: string;
-  shotNumber: string;
+  shotNumber?: string;
   shotName: string;
+  scopeOfWork?: string;
+  department?: Department | string;
   description: string;
   notes?: string;
   artistIds: string[];
@@ -64,6 +68,20 @@ export interface Artist {
   role: string;
   avatarColor: string;
 }
+
+// ===== Department options =====
+export interface DepartmentOption {
+  value: Department;
+  label: string;
+  color: string;
+}
+
+export const DEPARTMENT_OPTIONS: DepartmentOption[] = [
+  { value: 'Roto',             label: 'Roto',             color: '#8b5cf6' },
+  { value: 'Camera Tracking',  label: 'Camera Tracking',  color: '#0284c7' },
+  { value: 'Object Tracking',  label: 'Object Tracking',  color: '#059669' },
+  { value: 'Prep',             label: 'Prep',             color: '#f59e0b' },
+];
 
 // ===== Status options =====
 export interface StatusOption {
@@ -147,4 +165,5 @@ export type AppAction =
   | { type: 'DELETE_ARTIST'; payload: string }
   | { type: 'ADD_FEEDBACK'; payload: ClientFeedback }
   | { type: 'SYNC_EXCEL_SHOTS'; payload: { projectId: string; added: Shot[]; updated: Shot[] } }
+  | { type: 'RESET_FOR_NEW_PROJECT'; payload?: { newProjectName?: string } }
   | { type: 'LOAD_STATE'; payload: Partial<AppState> };

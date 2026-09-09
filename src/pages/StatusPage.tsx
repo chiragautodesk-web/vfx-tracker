@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react';
 import { useStore, useProjectName, useArtistNames, useStatusCounts } from '../store';
 import type { Shot, ColumnDef, ClientFeedback } from '../types';
-import { STATUS_OPTIONS } from '../types';
+import { STATUS_OPTIONS, DEPARTMENT_OPTIONS } from '../types';
 import { formatDate, generateId, now } from '../utils';
 import DataGrid from '../components/DataGrid';
 import TopBar from '../components/TopBar';
 import Modal from '../components/Modal';
-import { StatusBadge } from '../components/StatusBadge';
+import { StatusBadge, DepartmentBadge } from '../components/StatusBadge';
 import { useToast } from '../components/Toast';
 import NotesModal from '../components/NotesModal';
 
@@ -28,8 +28,32 @@ export default function StatusPage() {
   }, [state.shots, filterStatus]);
 
   const columns: ColumnDef<Shot>[] = useMemo(() => [
-    { key: 'shotNumber', label: 'Shot #', width: 100 },
-    { key: 'shotName', label: 'Shot Name', width: 150 },
+    {
+      key: 'shotName',
+      label: 'Shot Name',
+      width: 160,
+      render: (row) => <span className="cell-text" style={{ fontWeight: 600 }}>{row.shotName || row.shotNumber}</span>,
+      getValue: (row) => row.shotName || row.shotNumber || '',
+    },
+    {
+      key: 'scopeOfWork',
+      label: 'Scope of Work',
+      width: 200,
+      render: (row) => (
+        <span className="cell-text" title={row.scopeOfWork} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {row.scopeOfWork ? row.scopeOfWork : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+        </span>
+      ),
+      getValue: (row) => row.scopeOfWork || '',
+    },
+    {
+      key: 'department',
+      label: 'Department',
+      width: 150,
+      options: DEPARTMENT_OPTIONS,
+      render: (row) => <DepartmentBadge department={row.department} />,
+      getValue: (row) => row.department || '',
+    },
     {
       key: 'notes', label: 'Notes', width: 250,
       render: (row) => (
@@ -187,7 +211,7 @@ export default function StatusPage() {
       <Modal
         isOpen={!!feedbackShot}
         onClose={() => { setFeedbackShot(null); setFbForm({ note: '', type: 'feedback' }); }}
-        title={`Feedback — ${feedbackShot?.shotNumber ?? ''}`}
+        title={`Feedback — ${feedbackShot?.shotName || feedbackShot?.shotNumber || ''}`}
         width="600px"
         footer={
           <button className="btn btn-secondary" onClick={() => setFeedbackShot(null)}>Close</button>

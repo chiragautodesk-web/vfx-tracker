@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import type { AppState, AppAction, Project, Shot, Artist } from './types';
-import { now, today } from './utils';
+import { now, today, generateId } from './utils';
 import { supabase } from './supabaseClient';
 
 /** Returns YYYY-MM-DD offset from today */
@@ -58,6 +58,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
   const shots: Shot[] = [
     {
       id: 'shot-1', projectId: 'proj-1', shotNumber: 'DQ_010', shotName: 'Dragon Reveal',
+      scopeOfWork: 'Dragon wireframe & texture cleanup', department: 'Roto',
       description: 'Full CG dragon emerging from mountain',
       artistIds: ['artist-1'], status: 'in-progress', priority: 'critical',
       eta: daysFromNow(0), finalDeliveryDate: daysFromNow(0), deliveryStatus: 'to-be-delivered',
@@ -68,6 +69,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     },
     {
       id: 'shot-2', projectId: 'proj-1', shotNumber: 'DQ_020', shotName: 'Dragon Flight',
+      scopeOfWork: 'Canyon tracking markers & camera solve', department: 'Camera Tracking',
       description: 'Dragon flying over canyon',
       artistIds: ['artist-2'], status: 'wip', priority: 'high',
       eta: daysFromNow(0), finalDeliveryDate: daysFromNow(1), deliveryStatus: 'to-be-delivered',
@@ -76,6 +78,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     },
     {
       id: 'shot-3', projectId: 'proj-1', shotNumber: 'DQ_030', shotName: 'Fire Breath',
+      scopeOfWork: 'Dragon head matchmove & fire emitter track', department: 'Object Tracking',
       description: 'Dragon fire breath FX with hero interaction',
       artistIds: ['artist-2'], status: 'pending', priority: 'high',
       eta: daysFromNow(3), finalDeliveryDate: daysFromNow(5), deliveryStatus: 'pending',
@@ -84,6 +87,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     },
     {
       id: 'shot-4', projectId: 'proj-1', shotNumber: 'DQ_040', shotName: 'Dragon Landing',
+      scopeOfWork: 'Clean plate ground dust & rig removal', department: 'Prep',
       description: 'Dragon landing with ground impact FX',
       artistIds: ['artist-3'], status: 'approved', priority: 'medium',
       eta: daysFromNow(-2), finalDeliveryDate: daysFromNow(0), deliveryStatus: 'to-be-delivered',
@@ -94,6 +98,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     },
     {
       id: 'shot-5', projectId: 'proj-2', shotNumber: 'CD_010', shotName: 'Building Collapse',
+      scopeOfWork: 'Building window reflection paint & debris prep', department: 'Prep',
       description: 'Hero building collapse with debris',
       artistIds: ['artist-2'], status: 'client-review', priority: 'critical',
       eta: daysFromNow(0), finalDeliveryDate: daysFromNow(0), deliveryStatus: 'to-be-delivered',
@@ -104,6 +109,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     },
     {
       id: 'shot-6', projectId: 'proj-2', shotNumber: 'CD_020', shotName: 'Street Explosion',
+      scopeOfWork: 'Moving car matchmove & tire tracking', department: 'Object Tracking',
       description: 'Street-level explosion with car flip',
       artistIds: ['artist-1'], status: 'changes-required', priority: 'high',
       eta: daysFromNow(-1), finalDeliveryDate: daysFromNow(0), deliveryStatus: 'to-be-delivered',
@@ -114,6 +120,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     },
     {
       id: 'shot-7', projectId: 'proj-2', shotNumber: 'CD_030', shotName: 'Aerial Shot',
+      scopeOfWork: 'Aerial drone 3D camera solve', department: 'Camera Tracking',
       description: 'Aerial view of destruction aftermath',
       artistIds: ['artist-4'], status: 'internal-review', priority: 'medium',
       eta: daysFromNow(2), finalDeliveryDate: daysFromNow(4), deliveryStatus: 'pending',
@@ -122,6 +129,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     },
     {
       id: 'shot-8', projectId: 'proj-2', shotNumber: 'CD_040', shotName: 'Hero Rescue',
+      scopeOfWork: 'Character roto edge isolation for comp', department: 'Roto',
       description: 'Hero rescue sequence with falling debris',
       artistIds: ['artist-3'], status: 'delivered', priority: 'low',
       eta: daysFromNow(-5), finalDeliveryDate: daysFromNow(-5), deliveryStatus: 'delivered',
@@ -130,6 +138,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     },
     {
       id: 'shot-9', projectId: 'proj-3', shotNumber: 'UW_010', shotName: 'Deep Sea Dive',
+      scopeOfWork: 'Submarine tracking & particulate clean plate', department: 'Prep',
       description: 'Camera dive into deep ocean environment',
       artistIds: ['artist-4'], status: 'pending', priority: 'medium',
       eta: daysFromNow(7), finalDeliveryDate: daysFromNow(10), deliveryStatus: 'pending',
@@ -138,6 +147,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     },
     {
       id: 'shot-10', projectId: 'proj-3', shotNumber: 'UW_020', shotName: 'Creature Encounter',
+      scopeOfWork: 'Creature tentacle articulation roto', department: 'Roto',
       description: 'Bioluminescent creature reveal',
       artistIds: ['artist-1'], status: 'client-feedback', priority: 'high',
       eta: daysFromNow(0), finalDeliveryDate: daysFromNow(1), deliveryStatus: 'pending',
@@ -151,15 +161,25 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
   return { projects, shots, artists };
 }
 
+function migrateShot(s: any): Shot {
+  const shotName = s.shotName || s.shotNumber || 'Untitled Shot';
+  const shotNumber = s.shotNumber || s.shotName || '';
+  return {
+    ...s,
+    shotName,
+    shotNumber,
+    scopeOfWork: s.scopeOfWork || '',
+    department: s.department || '',
+    artistIds: Array.isArray(s.artistIds) ? s.artistIds : (s.artistId ? [s.artistId] : []),
+    clientFeedback: Array.isArray(s.clientFeedback) ? s.clientFeedback : [],
+  };
+}
+
 // ===== Initial State =====
 function getInitialState(): AppState {
   const saved = loadFromStorage();
   if (saved && saved.projects && saved.projects.length > 0) {
-    const migratedShots = saved.shots?.map((s: any) => {
-      if (s.artistId && !s.artistIds) return { ...s, artistIds: [s.artistId] };
-      if (!s.artistIds) return { ...s, artistIds: [] };
-      return s;
-    }) || [];
+    const migratedShots = saved.shots?.map(migrateShot) || [];
 
     return {
       projects: saved.projects ?? [],
@@ -257,13 +277,42 @@ function appReducer(state: AppState, action: AppAction): AppState {
       };
     }
 
+    case 'RESET_FOR_NEW_PROJECT': {
+      // 1. Automatically save a backup snapshot to localStorage
+      try {
+        const archiveKey = `vfx-tracker-archive-${Date.now()}`;
+        localStorage.setItem(archiveKey, JSON.stringify({
+          projects: state.projects,
+          shots: state.shots,
+          artists: state.artists,
+          archivedAt: new Date().toISOString(),
+        }));
+      } catch { /* ignore */ }
+
+      const newProjName = action.payload?.newProjectName || 'New VFX Project';
+      const newProjectId = generateId();
+      const newProject: Project = {
+        id: newProjectId,
+        name: newProjName,
+        client: 'Client Studio',
+        description: 'New production workspace',
+        status: 'active',
+        createdAt: now(),
+        updatedAt: now(),
+      };
+
+      return {
+        ...state,
+        projects: [newProject],
+        shots: [], // fresh slate for new project
+        selectedProjectId: newProjectId,
+        activeTab: 'shots',
+      };
+    }
+
     case 'LOAD_STATE': {
       const stateData = action.payload as any;
-      const migratedShots = stateData.shots?.map((s: any) => {
-        if (s.artistId && !s.artistIds) return { ...s, artistIds: [s.artistId] };
-        if (!s.artistIds) return { ...s, artistIds: [] };
-        return s;
-      }) || [];
+      const migratedShots = stateData.shots?.map(migrateShot) || [];
       return { ...state, ...stateData, shots: migratedShots.length > 0 ? migratedShots : (stateData.shots || []) };
     }
 
@@ -282,57 +331,67 @@ const StoreContext = createContext<StoreContextValue | null>(null);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, undefined, getInitialState);
-  const [isLoaded, setIsLoaded] = React.useState(!supabase); // If no supabase, we're loaded immediately
 
-  // 1. Initial Load from Supabase (if configured)
+  // 1. Background remote sync from Supabase with non-blocking timeout
   useEffect(() => {
     if (!supabase) return;
     
+    let active = true;
     async function loadRemote() {
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+
         const { data, error } = await supabase!
           .from('app_state')
           .select('data')
           .eq('id', 'global_state')
+          .abortSignal(controller.signal)
           .single();
           
-        if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
-           console.warn('Supabase load error:', error);
+        clearTimeout(timeoutId);
+
+        if (error && error.code !== 'PGRST116') {
+          console.warn('Supabase remote sync bypassed:', error.message || error);
         }
         
-        if (data && data.data) {
+        if (data && data.data && active) {
           dispatch({ type: 'LOAD_STATE', payload: data.data });
         }
-      } catch (err) {
-        console.error('Supabase load error:', err);
-      } finally {
-        setIsLoaded(true);
+      } catch {
+        // Offline / DNS error / timeout -> silently fallback to local storage
       }
     }
     loadRemote();
+    return () => { active = false; };
   }, []);
 
-  // 2. Persist to storage (Local or Supabase) on every state change
+  // 2. Persist to storage (Local and Supabase) without blocking UI
   useEffect(() => {
-    // Save to local storage always as a backup
+    // Save to local storage always as primary / reliable storage
     saveToStorage(state);
     
-    // Save to Supabase if configured and we have finished the initial load
-    if (supabase && isLoaded) {
-      const { projects, shots, artists } = state;
-      supabase.from('app_state').upsert({
-        id: 'global_state',
-        data: { projects, shots, artists },
-        updated_at: new Date().toISOString()
-      }).then(({ error }) => {
-        if (error) console.error('Supabase save error:', error);
-      });
+    // Save to Supabase quietly in the background if configured
+    if (supabase) {
+      try {
+        const { projects, shots, artists } = state;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        supabase.from('app_state').upsert({
+          id: 'global_state',
+          data: { projects, shots, artists },
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'id' })
+        .abortSignal(controller.signal)
+        .then(
+          () => clearTimeout(timeoutId),
+          () => clearTimeout(timeoutId)
+        );
+      } catch {
+        // silent
+      }
     }
-  }, [state, isLoaded]);
-
-  if (!isLoaded) {
-    return <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>Loading Data...</div>;
-  }
+  }, [state]);
 
   return (
     <StoreContext.Provider value={{ state, dispatch }}>

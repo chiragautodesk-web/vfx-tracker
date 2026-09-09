@@ -10,11 +10,11 @@ import {
   useOverdueShots,
 } from '../store';
 import type { Shot, ColumnDef } from '../types';
-import { STATUS_OPTIONS, DELIVERY_STATUS_OPTIONS, PRIORITY_OPTIONS } from '../types';
+import { STATUS_OPTIONS, DELIVERY_STATUS_OPTIONS, PRIORITY_OPTIONS, DEPARTMENT_OPTIONS } from '../types';
 import { formatDate, now, today, daysRemainingText, daysRemainingSeverity } from '../utils';
 import DataGrid from '../components/DataGrid';
 import TopBar from '../components/TopBar';
-import { StatusBadge, DeliveryBadge, PriorityBadge } from '../components/StatusBadge';
+import { StatusBadge, DeliveryBadge, PriorityBadge, DepartmentBadge } from '../components/StatusBadge';
 import { useToast } from '../components/Toast';
 import { Rocket, RefreshCw, Hourglass, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import './TodayPage.css';
@@ -25,15 +25,16 @@ export default function TodayPage() {
   const { showToast } = useToast();
   const getProjectName = useProjectName();
   const getArtistNames = useArtistNames();
+
   const [notesShot, setNotesShot] = useState<Shot | null>(null);
 
-  const todayShots = useTodayShots();
+  const todayStr = today();
+  const overdueShots = useOverdueShots();
   const todayDeliveries = useTodayDeliveries();
+  const todayShots = useTodayShots();
   const inProgressShots = useInProgressShots();
   const pendingShots = usePendingShots();
-  const overdueShots = useOverdueShots();
 
-  const todayStr = today();
   const todayDisplay = new Date().toLocaleDateString('en-IN', {
     weekday: 'long',
     day: '2-digit',
@@ -41,22 +42,21 @@ export default function TodayPage() {
     year: 'numeric',
   });
 
-  // All shots that need attention today: due today + in progress + overdue
+  // Filtered rows for the DataGrid: prioritize action-needed shots
   const allTodayWork = useMemo(() => {
-    const ids = new Set<string>();
-    const combined: Shot[] = [];
-    const addShot = (s: Shot) => {
-      if (!ids.has(s.id)) {
-        ids.add(s.id);
-        combined.push(s);
-      }
-    };
-    // Priority order: overdue first, then today deliveries, then in-progress, then today ETA
-    overdueShots.forEach(addShot);
-    todayDeliveries.forEach(addShot);
-    todayShots.forEach(addShot);
-    inProgressShots.forEach(addShot);
-    return combined;
+    return [
+      ...overdueShots,
+      ...todayDeliveries.filter((s) => !overdueShots.some((o) => o.id === s.id)),
+      ...todayShots.filter(
+        (s) => !overdueShots.some((o) => o.id === s.id) && !todayDeliveries.some((d) => d.id === s.id)
+      ),
+      ...inProgressShots.filter(
+        (s) =>
+          !overdueShots.some((o) => o.id === s.id) &&
+          !todayDeliveries.some((d) => d.id === s.id) &&
+          !todayShots.some((t) => t.id === s.id)
+      ),
+    ];
   }, [overdueShots, todayDeliveries, todayShots, inProgressShots]);
 
   const deliveredToday = useMemo(() => {
@@ -73,8 +73,38 @@ export default function TodayPage() {
       render: (row) => <PriorityBadge priority={row.priority} />,
       getValue: (row) => row.priority,
     },
-    { key: 'shotNumber', label: 'Shot #', width: 100, editable: true, type: 'text' },
-    { key: 'shotName', label: 'Shot Name', width: 150, editable: true, type: 'text' },
+    {
+      key: 'shotName',
+      label: 'Shot Name',
+      width: 160,
+      editable: true,
+      type: 'text',
+      render: (row) => <span className="cell-text" style={{ fontWeight: 600 }}>{row.shotName || row.shotNumber}</span>,
+      getValue: (row) => row.shotName || row.shotNumber || '',
+    },
+    {
+      key: 'scopeOfWork',
+      label: 'Scope of Work',
+      width: 200,
+      editable: true,
+      type: 'text',
+      render: (row) => (
+        <span className="cell-text" title={row.scopeOfWork} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {row.scopeOfWork ? row.scopeOfWork : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+        </span>
+      ),
+      getValue: (row) => row.scopeOfWork || '',
+    },
+    {
+      key: 'department',
+      label: 'Department',
+      width: 150,
+      editable: true,
+      type: 'select',
+      options: DEPARTMENT_OPTIONS,
+      render: (row) => <DepartmentBadge department={row.department} />,
+      getValue: (row) => row.department || '',
+    },
     {
       key: 'notes', label: 'Notes', width: 250,
       render: (row) => (
@@ -173,7 +203,7 @@ export default function TodayPage() {
                 type: 'UPDATE_SHOT',
                 payload: { ...row, deliveryStatus: 'delivered', finalDeliveryDate: row.finalDeliveryDate || todayStr, updatedAt: now() },
               });
-              showToast(`${row.shotNumber} marked delivered ✓`);
+              showToast(`${row.shotName || row.shotNumber} marked delivered ✓`);
             }}
           >
             Mark Delivered
@@ -211,7 +241,7 @@ export default function TodayPage() {
             </div>
             <div className="hero-card-shots">
               {todayDeliveries.slice(0, 3).map((s) => (
-                <span key={s.id} className="hero-shot-chip">{s.shotNumber}</span>
+                <span key={s.id} className="hero-shot-chip">{s.shotName || s.shotNumber}</span>
               ))}
               {todayDeliveries.length > 3 && <span className="hero-shot-chip more">+{todayDeliveries.length - 3}</span>}
             </div>
@@ -225,7 +255,7 @@ export default function TodayPage() {
             </div>
             <div className="hero-card-shots">
               {inProgressShots.slice(0, 3).map((s) => (
-                <span key={s.id} className="hero-shot-chip">{s.shotNumber}</span>
+                <span key={s.id} className="hero-shot-chip">{s.shotName || s.shotNumber}</span>
               ))}
               {inProgressShots.length > 3 && <span className="hero-shot-chip more">+{inProgressShots.length - 3}</span>}
             </div>
@@ -248,7 +278,7 @@ export default function TodayPage() {
             {overdueShots.length > 0 && (
               <div className="hero-card-shots">
                 {overdueShots.slice(0, 3).map((s) => (
-                  <span key={s.id} className="hero-shot-chip overdue">{s.shotNumber}</span>
+                  <span key={s.id} className="hero-shot-chip overdue">{s.shotName || s.shotNumber}</span>
                 ))}
               </div>
             )}
@@ -277,7 +307,7 @@ export default function TodayPage() {
           onRowDelete={(id) => {
             const shot = state.shots.find((s) => s.id === id);
             dispatch({ type: 'DELETE_SHOT', payload: id });
-            showToast(`Shot "${shot?.shotNumber}" deleted`, 'error');
+            showToast(`Shot "${shot?.shotName || shot?.shotNumber}" deleted`, 'error');
           }}
           onBulkDelete={(ids) => {
             dispatch({ type: 'DELETE_SHOTS', payload: ids });
