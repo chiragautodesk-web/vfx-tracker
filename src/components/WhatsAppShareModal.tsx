@@ -40,10 +40,15 @@ export default function WhatsAppShareModal({
   const [formatMode, setFormatMode] = useState<FormatStyle>('simple');
   const [recents, setRecents] = useState<SavedContact[]>([]);
 
+  const isLocalhost = typeof window !== 'undefined' && 
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const API_BASE = (import.meta.env.VITE_WHATSAPP_API_URL || '').replace(/\/$/, '');
+  const hasApiServer = isLocalhost || Boolean(API_BASE);
+
   // WhatsApp In-App Backend State
   const [backendStatus, setBackendStatus] = useState<
     'checking' | 'connected' | 'qr_ready' | 'connecting' | 'disconnected' | 'offline'
-  >('checking');
+  >(hasApiServer ? 'checking' : 'offline');
   const [qrCodeData, setQrCodeData] = useState<string | null>(null);
   const [userPhone, setUserPhone] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
@@ -73,8 +78,12 @@ export default function WhatsAppShareModal({
 
   // Check and poll WhatsApp connection status
   const checkWhatsAppStatus = async () => {
+    if (!hasApiServer) {
+      setBackendStatus('offline');
+      return;
+    }
     try {
-      const res = await fetch('/api/whatsapp/status');
+      const res = await fetch(`${API_BASE}/api/whatsapp/status`);
       if (!res.ok) {
         setBackendStatus('offline');
         return;
@@ -103,7 +112,7 @@ export default function WhatsAppShareModal({
   };
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && hasApiServer) {
       checkWhatsAppStatus();
       pollingRef.current = setInterval(() => {
         if (backendStatus !== 'offline') {
@@ -116,7 +125,7 @@ export default function WhatsAppShareModal({
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
-  }, [isOpen, backendStatus]);
+  }, [isOpen, backendStatus, hasApiServer]);
 
   // Reconnect / generate fresh QR
   const handleReconnect = async () => {
@@ -124,7 +133,7 @@ export default function WhatsAppShareModal({
     setIsReconnecting(true);
     try {
       setBackendStatus('connecting');
-      const res = await fetch('/api/whatsapp/reconnect', { method: 'POST' });
+      const res = await fetch(`${API_BASE}/api/whatsapp/reconnect`, { method: 'POST' });
       const text = await res.text();
       if (text) {
         try {
@@ -150,7 +159,7 @@ export default function WhatsAppShareModal({
   // Logout WhatsApp
   const handleLogout = async () => {
     try {
-      const res = await fetch('/api/whatsapp/logout', { method: 'POST' });
+      const res = await fetch(`${API_BASE}/api/whatsapp/logout`, { method: 'POST' });
       await res.json();
       setBackendStatus('disconnected');
       setQrCodeData(null);
@@ -267,7 +276,7 @@ export default function WhatsAppShareModal({
 
     setIsSendingDirect(true);
     try {
-      const res = await fetch('/api/whatsapp/send', {
+      const res = await fetch(`${API_BASE}/api/whatsapp/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: fullCleanNumber, message: messageText }),
