@@ -7,9 +7,10 @@ import type { Shot } from '../types';
 interface NotesModalProps {
   shot: Shot | null;
   onClose: () => void;
+  onShareWhatsApp?: (shot: Shot) => void;
 }
 
-export default function NotesModal({ shot, onClose }: NotesModalProps) {
+export default function NotesModal({ shot, onClose, onShareWhatsApp }: NotesModalProps) {
   const { dispatch } = useStore();
   const [notes, setNotes] = useState('');
 
@@ -32,13 +33,29 @@ export default function NotesModal({ shot, onClose }: NotesModalProps) {
     <Modal
       isOpen={!!shot}
       onClose={onClose}
-      title={`Notes — ${shot?.shotNumber ?? ''}`}
+      title={`Notes — ${shot?.shotName || shot?.shotNumber || ''}`}
       width="600px"
       footer={
-        <>
-          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={handleSave}>Save Notes</button>
-        </>
+        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+          {onShareWhatsApp && shot ? (
+            <button
+              type="button"
+              className="btn btn-whatsapp-outline btn-sm"
+              onClick={() => {
+                const updated = { ...shot, notes, updatedAt: now() };
+                dispatch({ type: 'UPDATE_SHOT', payload: updated });
+                onShareWhatsApp(updated);
+              }}
+              title="Send this shot note via WhatsApp"
+            >
+              📱 Send via WhatsApp
+            </button>
+          ) : <div />}
+          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleSave}>Save Notes</button>
+          </div>
+        </div>
       }
     >
       <div className="form-group" style={{ marginBottom: 0 }}>

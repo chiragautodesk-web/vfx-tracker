@@ -12,6 +12,7 @@ import { useToast } from '../components/Toast';
 import ExcelSyncModal from '../components/ExcelSyncModal';
 import NotesModal from '../components/NotesModal';
 import DataBackupModal from '../components/DataBackupModal';
+import WhatsAppShareModal from '../components/WhatsAppShareModal';
 
 export default function ShotsPage() {
   const { state, dispatch } = useStore();
@@ -23,6 +24,8 @@ export default function ShotsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [showBackupModal, setShowBackupModal] = useState(false);
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+  const [whatsappShots, setWhatsappShots] = useState<Shot[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [notesShot, setNotesShot] = useState<Shot | null>(null);
   const [artistDropdownOpen, setArtistDropdownOpen] = useState(false);
@@ -220,6 +223,16 @@ export default function ShotsPage() {
         ]}
         actions={
           <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <button
+              className="btn btn-whatsapp-outline"
+              onClick={() => {
+                setWhatsappShots(filteredShots);
+                setShowWhatsAppModal(true);
+              }}
+              title="Send notes of current shots via WhatsApp"
+            >
+              📱 WhatsApp Notes
+            </button>
             <button className="btn btn-secondary" onClick={() => setShowBackupModal(true)}>
               📦 Export / Backup
             </button>
@@ -275,6 +288,18 @@ export default function ShotsPage() {
           }}
           onRowDelete={(id) => setDeleteId(id)}
           onBulkDelete={(ids) => { dispatch({ type: 'DELETE_SHOTS', payload: ids }); showToast(`${ids.length} shots deleted`, 'error'); }}
+          renderBulkActions={(_ids, selectedRows) => (
+            <button
+              type="button"
+              className="btn btn-whatsapp btn-sm"
+              onClick={() => {
+                setWhatsappShots(selectedRows);
+                setShowWhatsAppModal(true);
+              }}
+            >
+              📱 Send Notes via WhatsApp ({selectedRows.length})
+            </button>
+          )}
           emptyMessage="No shots found — click 'Add Shot' to create one"
         />
 
@@ -496,8 +521,22 @@ export default function ShotsPage() {
         message="Are you sure you want to delete this shot? This action cannot be undone."
       />
 
-      <NotesModal shot={notesShot} onClose={() => setNotesShot(null)} />
+      <NotesModal
+        shot={notesShot}
+        onClose={() => setNotesShot(null)}
+        onShareWhatsApp={(shot) => {
+          setNotesShot(null);
+          setWhatsappShots([shot]);
+          setShowWhatsAppModal(true);
+        }}
+      />
       <DataBackupModal isOpen={showBackupModal} onClose={() => setShowBackupModal(false)} />
+      <WhatsAppShareModal
+        isOpen={showWhatsAppModal}
+        onClose={() => setShowWhatsAppModal(false)}
+        shots={whatsappShots}
+        projectName={getProjectName(filterProjectId || state.selectedProjectId || (whatsappShots[0]?.projectId ?? ''))}
+      />
     </div>
   );
 }

@@ -10,6 +10,7 @@ interface DataGridProps<T extends { id: string }> {
   onRowEditClick?: (row: T) => void;
   onRowClick?: (row: T) => void;
   onBulkDelete?: (ids: string[]) => void;
+  renderBulkActions?: (selectedIds: string[], selectedRows: T[]) => React.ReactNode;
   emptyMessage?: string;
   showCheckboxes?: boolean;
 }
@@ -22,6 +23,7 @@ export default function DataGrid<T extends { id: string }>({
   onRowEditClick,
   onRowClick,
   onBulkDelete,
+  renderBulkActions,
   emptyMessage = 'No data found',
   showCheckboxes = true,
 }: DataGridProps<T>) {
@@ -181,6 +183,10 @@ export default function DataGrid<T extends { id: string }>({
       {selectedIds.size > 0 && (
         <div className="datagrid-bulk-bar animate-slide-up">
           <span className="bulk-count">{selectedIds.size} selected</span>
+          {renderBulkActions && renderBulkActions(
+            Array.from(selectedIds),
+            processedData.filter((r) => selectedIds.has(r.id))
+          )}
           {onBulkDelete && (
             <button className="btn btn-danger btn-sm" onClick={() => { onBulkDelete(Array.from(selectedIds)); setSelectedIds(new Set()); }}>
               Delete Selected
