@@ -79,6 +79,11 @@ export default function WhatsAppShareModal({
         setBackendStatus('offline');
         return;
       }
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        setBackendStatus('offline');
+        return;
+      }
       const data = await res.json();
       setBackendStatus(data.status || 'disconnected');
       if (data.qrCode) {
@@ -100,15 +105,18 @@ export default function WhatsAppShareModal({
   useEffect(() => {
     if (isOpen) {
       checkWhatsAppStatus();
-      // Poll every 2 seconds for QR updates or scan detection
-      pollingRef.current = setInterval(checkWhatsAppStatus, 2000);
+      pollingRef.current = setInterval(() => {
+        if (backendStatus !== 'offline') {
+          checkWhatsAppStatus();
+        }
+      }, 2500);
     } else {
       if (pollingRef.current) clearInterval(pollingRef.current);
     }
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
-  }, [isOpen]);
+  }, [isOpen, backendStatus]);
 
   // Reconnect / generate fresh QR
   const handleReconnect = async () => {
@@ -371,98 +379,115 @@ export default function WhatsAppShareModal({
     >
       <div className="wa-modal-body">
         {/* WhatsApp Connection Card */}
-        <div className={`wa-connection-card ${backendStatus === 'connected' ? 'connected' : qrCodeData ? 'qr-needed' : ''}`}>
-          <div className="wa-connection-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '13px', fontWeight: 600 }}>WhatsApp Web Link:</span>
-              {backendStatus === 'connected' && (
+        {backendStatus === 'offline' ? (
+          <div className="wa-connection-card connected">
+            <div className="wa-connection-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600 }}>WhatsApp Web Mode:</span>
                 <span className="wa-status-pill connected">
                   <span className="wa-status-dot green" />
-                  <span>Logged in as +{userPhone} {userName ? `(${userName})` : ''}</span>
+                  <span>Cloud Ready</span>
                 </span>
-              )}
-              {backendStatus === 'qr_ready' && (
-                <span className="wa-status-pill waiting">
-                  <span className="wa-status-dot yellow" />
-                  <span>Ready to scan QR Code</span>
-                </span>
-              )}
-              {backendStatus === 'connecting' && (
-                <span className="wa-status-pill waiting">
-                  <span className="wa-status-dot yellow" />
-                  <span>Connecting to WhatsApp...</span>
-                </span>
-              )}
-              {(backendStatus === 'disconnected' || backendStatus === 'offline') && (
-                <span className="wa-status-pill offline">
-                  <span className="wa-status-dot gray" />
-                  <span>Not Linked</span>
-                </span>
-              )}
+              </div>
             </div>
-
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              {backendStatus === 'connected' ? (
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-xs"
-                  style={{ color: 'var(--color-danger, #ef4444)' }}
-                  onClick={handleLogout}
-                >
-                  Disconnect
-                </button>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-xs"
-                    onClick={() => setShowQrCodeBox(!showQrCodeBox)}
-                  >
-                    {showQrCodeBox ? 'Hide QR' : '🔗 Scan QR Code'}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-xs"
-                    onClick={handleReconnect}
-                    disabled={isReconnecting}
-                    title="Generate fresh QR Code"
-                  >
-                    {isReconnecting ? '⏳ Refreshing...' : '🔄 Refresh'}
-                  </button>
-                </>
-              )}
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              ⚡ <strong>1-Click Send Active:</strong> Recipient ka number daalein aur neeche <strong>📱 Send</strong> click karein — aapke WhatsApp Web me message turant pre-fill hokar open ho jayega!
             </div>
           </div>
-
-          {/* Interactive QR Code Box */}
-          {showQrCodeBox && backendStatus !== 'connected' && (
-            <div className="wa-qr-box">
-              <div className="wa-qr-image-wrapper">
-                {qrCodeData ? (
-                  <img src={qrCodeData} alt="WhatsApp QR Code" className="wa-qr-image" />
-                ) : (
-                  <div style={{ fontSize: '11px', color: '#6b7280', textAlign: 'center', padding: '10px' }}>
-                    ⏳ Generating QR Code...
-                  </div>
+        ) : (
+          <div className={`wa-connection-card ${backendStatus === 'connected' ? 'connected' : qrCodeData ? 'qr-needed' : ''}`}>
+            <div className="wa-connection-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600 }}>WhatsApp Web Link:</span>
+                {backendStatus === 'connected' && (
+                  <span className="wa-status-pill connected">
+                    <span className="wa-status-dot green" />
+                    <span>Logged in as +{userPhone} {userName ? `(${userName})` : ''}</span>
+                  </span>
+                )}
+                {backendStatus === 'qr_ready' && (
+                  <span className="wa-status-pill waiting">
+                    <span className="wa-status-dot yellow" />
+                    <span>Ready to scan QR Code</span>
+                  </span>
+                )}
+                {backendStatus === 'connecting' && (
+                  <span className="wa-status-pill waiting">
+                    <span className="wa-status-dot yellow" />
+                    <span>Connecting to WhatsApp...</span>
+                  </span>
+                )}
+                {backendStatus === 'disconnected' && (
+                  <span className="wa-status-pill offline">
+                    <span className="wa-status-dot gray" />
+                    <span>Not Linked</span>
+                  </span>
                 )}
               </div>
-              <div className="wa-qr-instructions">
-                <div style={{ fontWeight: 700, fontSize: '13px', color: '#111827' }}>
-                  📱 How to link your WhatsApp:
-                </div>
-                <ol>
-                  <li>Open <strong>WhatsApp</strong> on your phone</li>
-                  <li>Tap <strong>Menu (3 dots)</strong> or <strong>Settings</strong></li>
-                  <li>Select <strong>Linked Devices</strong> &gt; <strong>Link a Device</strong></li>
-                  <li>Point your phone camera to this QR code to scan</li>
-                </ol>
-                <div style={{ fontSize: '11px', color: '#059669', fontWeight: 600, marginTop: '4px' }}>
-                  ⚡ Once scanned, click <strong>Send</strong> to send directly from this app!
-                </div>
+
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                {backendStatus === 'connected' ? (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-xs"
+                    style={{ color: 'var(--color-danger, #ef4444)' }}
+                    onClick={handleLogout}
+                  >
+                    Disconnect
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-xs"
+                      onClick={() => setShowQrCodeBox(!showQrCodeBox)}
+                    >
+                      {showQrCodeBox ? 'Hide QR' : '🔗 Scan QR Code'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-xs"
+                      onClick={handleReconnect}
+                      disabled={isReconnecting}
+                      title="Generate fresh QR Code"
+                    >
+                      {isReconnecting ? '⏳ Refreshing...' : '🔄 Refresh'}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
-          )}
-        </div>
+
+            {/* Interactive QR Code Box */}
+            {showQrCodeBox && backendStatus !== 'connected' && (
+              <div className="wa-qr-box">
+                <div className="wa-qr-image-wrapper">
+                  {qrCodeData ? (
+                    <img src={qrCodeData} alt="WhatsApp QR Code" className="wa-qr-image" />
+                  ) : (
+                    <div style={{ fontSize: '11px', color: '#6b7280', textAlign: 'center', padding: '10px' }}>
+                      ⏳ Generating QR Code...
+                    </div>
+                  )}
+                </div>
+                <div className="wa-qr-instructions">
+                  <div style={{ fontWeight: 700, fontSize: '13px', color: '#111827' }}>
+                    📱 How to link your WhatsApp:
+                  </div>
+                  <ol>
+                    <li>Open <strong>WhatsApp</strong> on your phone</li>
+                    <li>Tap <strong>Menu (3 dots)</strong> or <strong>Settings</strong></li>
+                    <li>Select <strong>Linked Devices</strong> &gt; <strong>Link a Device</strong></li>
+                    <li>Point your phone camera to this QR code to scan</li>
+                  </ol>
+                  <div style={{ fontSize: '11px', color: '#059669', fontWeight: 600, marginTop: '4px' }}>
+                    ⚡ Once scanned, click <strong>Send</strong> to send directly from this app!
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Recipient Phone Input */}
         <div className="wa-section">
