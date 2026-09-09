@@ -103,10 +103,20 @@ export default function DataGrid<T extends { id: string }>({
     });
   };
 
+  const [popoverSearch, setPopoverSearch] = useState('');
+
+  // Helper for quick date offsets
+  const getOffsetDate = (days: number): string => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return d.toISOString().split('T')[0];
+  };
+
   // Inline editing
   const startEdit = (rowId: string, colKey: string, currentValue: any) => {
     setEditingCell({ rowId, colKey });
     setEditValue(currentValue);
+    setPopoverSearch('');
   };
 
   const commitEdit = (row: T) => {
@@ -114,10 +124,12 @@ export default function DataGrid<T extends { id: string }>({
     const updated = { ...row, [editingCell.colKey]: editValue, updatedAt: new Date().toISOString() };
     onRowUpdate(updated);
     setEditingCell(null);
+    setPopoverSearch('');
   };
 
   const cancelEdit = () => {
     setEditingCell(null);
+    setPopoverSearch('');
   };
 
   // Close editing cell on click outside
@@ -125,8 +137,9 @@ export default function DataGrid<T extends { id: string }>({
     if (!editingCell) return;
     const handleDocumentClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (!target.closest('.cell-edit-multiselect') && !target.closest('.editing')) {
+      if (!target.closest('.cell-edit-popover') && !target.closest('.cell-edit-multiselect') && !target.closest('.editing')) {
         setEditingCell(null);
+        setPopoverSearch('');
       }
     };
     document.addEventListener('mousedown', handleDocumentClick);
@@ -284,7 +297,20 @@ export default function DataGrid<T extends { id: string }>({
                         <td
                           key={col.key}
                           className={`datagrid-td${col.editable ? ' editable' : ''}${isEditing ? ' editing' : ''}`}
-                          style={{ width: getColWidth(col), position: col.type === 'multiselect' && isEditing ? 'relative' : undefined }}
+                          style={{
+                            width: getColWidth(col),
+                            position: col.editable && isEditing ? 'relative' : undefined,
+                            zIndex: isEditing ? 100 : undefined,
+                          }}
+                          onClick={(e) => {
+                            if (col.editable && !isEditing) {
+                              e.stopPropagation();
+                              const val = col.type === 'multiselect'
+                                ? (Array.isArray(rawValue) ? rawValue : (typeof rawValue === 'string' && rawValue.trim() ? rawValue.split(/[,/\\+;&|]+/).map((s: string) => s.trim()).filter(Boolean) : []))
+                                : rawValue;
+                              startEdit(row.id, col.key, val);
+                            }
+                          }}
                           onDoubleClick={(e) => {
                             if (col.editable && !isEditing) {
                               e.stopPropagation();
@@ -295,142 +321,210 @@ export default function DataGrid<T extends { id: string }>({
                             }
                           }}
                         >
-                          {isEditing ? (
-                            col.type === 'multiselect' && col.options ? (
-                              <>
-                                <div style={{ padding: '0 var(--space-3)', height: '100%', display: 'flex', alignItems: 'center' }}>
-                                  <span className="cell-text">{displayValue}</span>
-                                </div>
-                                <div
-                                  className="cell-edit-multiselect"
-                                  onClick={(e) => e.stopPropagation()}
-                                  style={{
-                                    position: 'absolute',
-                                    top: '100%',
-                                    left: 0,
-                                    zIndex: 50,
-                                    background: 'var(--bg-secondary)',
-                                    border: '1px solid var(--border-color)',
-                                    borderRadius: 'var(--radius-md)',
-                                    padding: 'var(--space-3)',
-                                    boxShadow: 'var(--shadow-xl)',
-                                    minWidth: '210px',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: '6px',
-                                    backdropFilter: 'blur(12px)',
-                                  }}
-                                >
-                                  <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                                    Select {col.label}
-                                  </div>
-                                  <div style={{ maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                                    {col.options.map((opt) => {
-                                      const isChecked = Array.isArray(editValue)
-                                        ? editValue.some((v: string) => {
-                                            const vL = String(v).toLowerCase();
-                                            const optL = opt.value.toLowerCase();
-                                            return vL === optL ||
-                                              (optL === 'object track' && vL === 'object tracking') ||
-                                              (optL === 'camera track' && vL === 'camera tracking');
-                                          })
-                                        : false;
-
-                                      return (
-                                        <label
-                                          key={opt.value}
-                                          style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '8px',
-                                            cursor: 'pointer',
-                                            fontSize: 'var(--text-sm)',
-                                            padding: '4px 6px',
-                                            borderRadius: 'var(--radius-sm)',
-                                            background: isChecked ? 'rgba(255,255,255,0.06)' : 'transparent',
-                                          }}
-                                        >
-                                          <input
-                                            type="checkbox"
-                                            checked={isChecked}
-                                            onChange={(e) => {
-                                              const arr = Array.isArray(editValue) ? [...editValue] : [];
-                                              if (e.target.checked) {
-                                                setEditValue([...arr, opt.value]);
-                                              } else {
-                                                setEditValue(arr.filter((v: string) => {
-                                                  const vL = String(v).toLowerCase();
-                                                  const optL = opt.value.toLowerCase();
-                                                  return vL !== optL &&
-                                                    !(optL === 'object track' && vL === 'object tracking') &&
-                                                    !(optL === 'camera track' && vL === 'camera tracking');
-                                                }));
-                                              }
-                                            }}
-                                          />
-                                          {opt.color && (
-                                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: opt.color, flexShrink: 0 }} />
-                                          )}
-                                          <span>{opt.label}</span>
-                                        </label>
-                                      );
-                                    })}
-                                  </div>
-                                  <div style={{ display: 'flex', gap: '6px', marginTop: '4px', paddingTop: '6px', borderTop: '1px solid var(--border-subtle)' }}>
-                                    <button className="btn btn-primary btn-sm" onClick={() => commitEdit(row)} style={{ flex: 1, padding: '4px 8px' }}>Save</button>
-                                    <button className="btn btn-secondary btn-sm" onClick={cancelEdit} style={{ flex: 1, padding: '4px 8px' }}>Cancel</button>
-                                  </div>
-                                </div>
-                              </>
-                            ) : col.type === 'select' && col.options ? (
-                              <select
-                                className="cell-edit-select"
-                                value={editValue}
-                                onChange={(e) => setEditValue(e.target.value)}
-                                onBlur={() => commitEdit(row)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') commitEdit(row);
-                                  if (e.key === 'Escape') cancelEdit();
-                                }}
-                                autoFocus
-                              >
-                                {col.options.map((opt) => (
-                                  <option key={opt.value} value={opt.value}>
-                                    {opt.label}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : col.type === 'date' ? (
-                              <input
-                                type="date"
-                                className="cell-edit-input"
-                                value={editValue}
-                                onChange={(e) => setEditValue(e.target.value)}
-                                onBlur={() => commitEdit(row)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') commitEdit(row);
-                                  if (e.key === 'Escape') cancelEdit();
-                                }}
-                                autoFocus
-                              />
-                            ) : (
-                              <input
-                                type={col.type === 'number' ? 'number' : 'text'}
-                                className="cell-edit-input"
-                                value={editValue}
-                                onChange={(e) => setEditValue(e.target.value)}
-                                onBlur={() => commitEdit(row)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') commitEdit(row);
-                                  if (e.key === 'Escape') cancelEdit();
-                                }}
-                                autoFocus
-                              />
-                            )
-                          ) : col.render ? (
+                          {/* Cell background display */}
+                          {col.render ? (
                             col.render(row)
                           ) : (
                             <span className="cell-text">{displayValue}</span>
+                          )}
+
+                          {/* Quick Edit Popover */}
+                          {isEditing && (
+                            <div
+                              className="cell-edit-popover"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="cell-edit-popover-header">
+                                <span>{col.type === 'date' ? 'Set' : col.type === 'multiselect' ? 'Select' : 'Edit'} {col.label}</span>
+                                <button
+                                  type="button"
+                                  onClick={cancelEdit}
+                                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '13px', lineHeight: 1 }}
+                                >
+                                  ✕
+                                </button>
+                              </div>
+
+                              {/* Case 1: Multiselect (Artists, Departments) */}
+                              {col.type === 'multiselect' && col.options && (
+                                <>
+                                  <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder={`🔍 Search ${col.label.toLowerCase()}...`}
+                                    value={popoverSearch}
+                                    onChange={(e) => setPopoverSearch(e.target.value)}
+                                    autoFocus
+                                    style={{ fontSize: 'var(--text-xs)', padding: '5px 8px', height: '28px', width: '100%', background: 'var(--bg-surface)' }}
+                                  />
+                                  <div className="cell-edit-popover-list">
+                                    {col.options
+                                      .filter((opt) => {
+                                        if (!popoverSearch.trim()) return true;
+                                        const q = popoverSearch.trim().toLowerCase();
+                                        return opt.label.toLowerCase().includes(q) || opt.value.toLowerCase().includes(q);
+                                      })
+                                      .map((opt) => {
+                                        const isChecked = Array.isArray(editValue)
+                                          ? editValue.some((v: string) => {
+                                              const vL = String(v).toLowerCase();
+                                              const optL = opt.value.toLowerCase();
+                                              return vL === optL ||
+                                                (optL === 'object track' && vL === 'object tracking') ||
+                                                (optL === 'camera track' && vL === 'camera tracking');
+                                            })
+                                          : false;
+
+                                        return (
+                                          <label
+                                            key={opt.value}
+                                            style={{
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              gap: '8px',
+                                              cursor: 'pointer',
+                                              fontSize: 'var(--text-sm)',
+                                              padding: '4px 6px',
+                                              borderRadius: 'var(--radius-sm)',
+                                              background: isChecked ? 'rgba(255,255,255,0.06)' : 'transparent',
+                                            }}
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              checked={isChecked}
+                                              onChange={(e) => {
+                                                const arr = Array.isArray(editValue) ? [...editValue] : [];
+                                                if (e.target.checked) {
+                                                  setEditValue([...arr, opt.value]);
+                                                } else {
+                                                  setEditValue(arr.filter((v: string) => {
+                                                    const vL = String(v).toLowerCase();
+                                                    const optL = opt.value.toLowerCase();
+                                                    return vL !== optL &&
+                                                      !(optL === 'object track' && vL === 'object tracking') &&
+                                                      !(optL === 'camera track' && vL === 'camera tracking');
+                                                  }));
+                                                }
+                                              }}
+                                            />
+                                            {opt.color && (
+                                              <span style={{ width: 8, height: 8, borderRadius: '50%', background: opt.color, flexShrink: 0 }} />
+                                            )}
+                                            <span>{opt.label}</span>
+                                          </label>
+                                        );
+                                      })}
+                                  </div>
+                                </>
+                              )}
+
+                              {/* Case 2: Select (Status, Priority, Delivery, Project) */}
+                              {col.type === 'select' && col.options && (
+                                <>
+                                  {col.options.length > 5 && (
+                                    <input
+                                      type="text"
+                                      className="form-input"
+                                      placeholder={`🔍 Search ${col.label.toLowerCase()}...`}
+                                      value={popoverSearch}
+                                      onChange={(e) => setPopoverSearch(e.target.value)}
+                                      autoFocus
+                                      style={{ fontSize: 'var(--text-xs)', padding: '5px 8px', height: '28px', width: '100%', background: 'var(--bg-surface)' }}
+                                    />
+                                  )}
+                                  <div className="cell-edit-popover-list">
+                                    {col.options
+                                      .filter((opt) => {
+                                        if (!popoverSearch.trim()) return true;
+                                        const q = popoverSearch.trim().toLowerCase();
+                                        return opt.label.toLowerCase().includes(q) || opt.value.toLowerCase().includes(q);
+                                      })
+                                      .map((opt) => {
+                                        const isSelected = editValue === opt.value;
+                                        return (
+                                          <button
+                                            key={opt.value}
+                                            type="button"
+                                            className={`cell-edit-select-option${isSelected ? ' selected' : ''}`}
+                                            onClick={() => setEditValue(opt.value)}
+                                            onDoubleClick={() => {
+                                              const updated = { ...row, [col.key]: opt.value, updatedAt: new Date().toISOString() };
+                                              if (onRowUpdate) onRowUpdate(updated);
+                                              setEditingCell(null);
+                                              setPopoverSearch('');
+                                            }}
+                                          >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                              {opt.color && (
+                                                <span style={{ width: 8, height: 8, borderRadius: '50%', background: opt.color, flexShrink: 0 }} />
+                                              )}
+                                              <span>{opt.label}</span>
+                                            </div>
+                                            {isSelected && <span style={{ fontSize: '12px', fontWeight: 'bold' }}>✓</span>}
+                                          </button>
+                                        );
+                                      })}
+                                  </div>
+                                </>
+                              )}
+
+                              {/* Case 3: Date (ETA, Final Delivery Date) */}
+                              {col.type === 'date' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                  <input
+                                    type="date"
+                                    className="form-input"
+                                    value={editValue || ''}
+                                    onChange={(e) => setEditValue(e.target.value)}
+                                    autoFocus
+                                    style={{ fontSize: 'var(--text-sm)', padding: '6px 8px', height: '32px', width: '100%' }}
+                                  />
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                    <button type="button" className="btn btn-ghost btn-xs" onClick={() => setEditValue(getOffsetDate(0))}>Today</button>
+                                    <button type="button" className="btn btn-ghost btn-xs" onClick={() => setEditValue(getOffsetDate(1))}>Tomorrow</button>
+                                    <button type="button" className="btn btn-ghost btn-xs" onClick={() => setEditValue(getOffsetDate(3))}>+3 Days</button>
+                                    <button type="button" className="btn btn-ghost btn-xs" onClick={() => setEditValue(getOffsetDate(7))}>+1 Wk</button>
+                                    <button type="button" className="btn btn-ghost btn-xs" onClick={() => setEditValue('')} style={{ color: 'var(--color-danger)' }}>Clear</button>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Case 4: Text or Number input */}
+                              {col.type !== 'multiselect' && col.type !== 'select' && col.type !== 'date' && (
+                                <input
+                                  type={col.type === 'number' ? 'number' : 'text'}
+                                  className="form-input"
+                                  value={editValue ?? ''}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') commitEdit(row);
+                                    if (e.key === 'Escape') cancelEdit();
+                                  }}
+                                  autoFocus
+                                  style={{ fontSize: 'var(--text-sm)', padding: '6px 8px', height: '32px', width: '100%' }}
+                                />
+                              )}
+
+                              {/* Popover Footer with Save & Cancel Buttons */}
+                              <div className="cell-edit-popover-footer">
+                                <button
+                                  type="button"
+                                  className="btn btn-primary btn-sm"
+                                  onClick={() => commitEdit(row)}
+                                  style={{ flex: 1, padding: '5px 10px', fontSize: 'var(--text-xs)', fontWeight: 600 }}
+                                >
+                                  ✓ Save
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary btn-sm"
+                                  onClick={cancelEdit}
+                                  style={{ flex: 1, padding: '5px 10px', fontSize: 'var(--text-xs)' }}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
                           )}
                         </td>
                       );

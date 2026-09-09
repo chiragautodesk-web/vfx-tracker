@@ -26,6 +26,7 @@ export default function ShotsPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [notesShot, setNotesShot] = useState<Shot | null>(null);
   const [artistDropdownOpen, setArtistDropdownOpen] = useState(false);
+  const [artistSearch, setArtistSearch] = useState('');
 
   const emptyForm = {
     id: '',
@@ -200,10 +201,12 @@ export default function ShotsPage() {
     setShowAddModal(false);
     setForm(emptyForm);
     setArtistDropdownOpen(false);
+    setArtistSearch('');
   };
 
   const handleRowUpdate = (row: Shot) => {
     dispatch({ type: 'UPDATE_SHOT', payload: { ...row, department: parseDepartmentList(row.department), updatedAt: now() } });
+    showToast(`Saved "${row.shotName || 'Shot'}"`, 'info');
   };
 
   return (
@@ -390,27 +393,47 @@ export default function ShotsPage() {
               <span style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{artistDropdownOpen ? '▲' : '▼'}</span>
             </div>
             {artistDropdownOpen && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: 'var(--space-2)', boxShadow: 'var(--shadow-md)', maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
-                {state.artists.map((a) => (
-                  <label key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '4px', borderRadius: 'var(--radius-sm)' }}>
-                    <input
-                      type="checkbox"
-                      checked={form.artistIds.includes(a.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setForm({ ...form, artistIds: [...form.artistIds, a.id] });
-                        } else {
-                          setForm({ ...form, artistIds: form.artistIds.filter(id => id !== a.id) });
-                        }
-                      }}
-                    />
-                    <span className="artist-chip" style={{ margin: 0 }}>
-                      <span className="artist-avatar" style={{ background: a.avatarColor }}>{a.name.charAt(0)}</span>
-                      {a.name}
-                    </span>
-                  </label>
+              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'var(--bg-surface-elevated, #1e293b)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: 'var(--space-2)', boxShadow: 'var(--shadow-xl)', maxHeight: '220px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                <div style={{ padding: '2px 0 6px 0', borderBottom: '1px solid var(--border-subtle)', marginBottom: '4px' }}>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="🔍 Search artist..."
+                    value={artistSearch}
+                    onChange={(e) => setArtistSearch(e.target.value)}
+                    style={{ fontSize: 'var(--text-xs)', padding: '5px 8px', height: '28px', background: 'var(--bg-surface)' }}
+                    autoFocus
+                  />
+                </div>
+                {state.artists
+                  .filter((a) => {
+                    if (!artistSearch.trim()) return true;
+                    const q = artistSearch.trim().toLowerCase();
+                    return a.name.toLowerCase().includes(q) || (a.role && a.role.toLowerCase().includes(q));
+                  })
+                  .map((a) => (
+                    <label key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '4px 6px', borderRadius: 'var(--radius-sm)', background: form.artistIds.includes(a.id) ? 'rgba(255,255,255,0.06)' : 'transparent' }}>
+                      <input
+                        type="checkbox"
+                        checked={form.artistIds.includes(a.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setForm({ ...form, artistIds: [...form.artistIds, a.id] });
+                          } else {
+                            setForm({ ...form, artistIds: form.artistIds.filter(id => id !== a.id) });
+                          }
+                        }}
+                      />
+                      <span className="artist-chip" style={{ margin: 0 }}>
+                        <span className="artist-avatar" style={{ background: a.avatarColor }}>{a.name.charAt(0)}</span>
+                        {a.name}
+                      </span>
+                    </label>
                 ))}
                 {state.artists.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', padding: '4px' }}>No artists available</span>}
+                {state.artists.length > 0 && state.artists.filter((a) => a.name.toLowerCase().includes(artistSearch.trim().toLowerCase())).length === 0 && (
+                  <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs)', padding: '4px', textAlign: 'center' }}>No artist matching "{artistSearch}"</span>
+                )}
               </div>
             )}
           </div>
