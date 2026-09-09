@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Modal from './Modal';
 import { useToast } from './Toast';
 import type { Shot } from '../types';
@@ -11,6 +11,13 @@ interface WhatsAppShareModalProps {
   projectName?: string;
 }
 
+import {
+  type FormatStyle,
+  formatExecutiveCard,
+  formatCleanList,
+  formatStudioGrid,
+} from '../utils/whatsappFormatter';
+
 interface SavedContact {
   phone: string;
   name?: string;
@@ -18,136 +25,6 @@ interface SavedContact {
 
 const STORAGE_KEY_RECENTS = 'vfx_recent_whatsapp_recipients';
 const STORAGE_KEY_LAST_CODE = 'vfx_last_whatsapp_country_code';
-
-// Helper to wrap long note text cleanly for monospace table
-function wrapText(text: string, maxWidth: number): string[] {
-  const words = text.split(/\s+/).filter(Boolean);
-  if (words.length === 0) return [''];
-  const lines: string[] = [];
-  let current = '';
-  for (const word of words) {
-    if (!current) {
-      current = word;
-    } else if (current.length + 1 + word.length <= maxWidth) {
-      current += ' ' + word;
-    } else {
-      lines.push(current);
-      current = word;
-    }
-  }
-  if (current) lines.push(current);
-  return lines;
-}
-
-// Generates an Excel-style Monospace ASCII Table for WhatsApp
-export function generateWhatsAppExcelGrid(
-  items: Array<{ shotName: string; notes?: string }>,
-  projectName?: string,
-  options: { includeHeader?: boolean; includeTimestamp?: boolean } = {}
-): string {
-  if (items.length === 0) return '';
-
-  const { includeHeader = true, includeTimestamp = true } = options;
-
-  // Calculate dynamic column width for Shot Name
-  const maxShotLen = Math.max(9, ...items.map((s) => (s.shotName || '').length));
-  const shotColWidth = Math.min(22, Math.max(12, maxShotLen));
-  const notesColWidth = 38;
-
-  const pad = (str: string, len: number) => {
-    if (str.length > len) return str.slice(0, len - 1) + '…';
-    return str + ' '.repeat(Math.max(0, len - str.length));
-  };
-
-  const border = '+' + '-'.repeat(shotColWidth + 2) + '+' + '-'.repeat(notesColWidth + 2) + '+';
-  const header = '| ' + pad('Shot Name', shotColWidth) + ' | ' + pad('Notes', notesColWidth) + ' |';
-
-  const tableLines = [border, header, border];
-
-  for (const item of items) {
-    const rawShot = item.shotName || 'N/A';
-    const noteText = (item.notes || '').trim() || '—';
-
-    // Handle existing line breaks in note first
-    const paragraphs = noteText.split(/\r?\n/);
-    const wrappedNoteLines: string[] = [];
-    for (const p of paragraphs) {
-      wrappedNoteLines.push(...wrapText(p, notesColWidth));
-    }
-    if (wrappedNoteLines.length === 0) wrappedNoteLines.push('—');
-
-    // First row line
-    tableLines.push('| ' + pad(rawShot, shotColWidth) + ' | ' + pad(wrappedNoteLines[0], notesColWidth) + ' |');
-    // Multi-line continuation for wrapped notes
-    for (let i = 1; i < wrappedNoteLines.length; i++) {
-      tableLines.push('| ' + pad('', shotColWidth) + ' | ' + pad(wrappedNoteLines[i], notesColWidth) + ' |');
-    }
-    tableLines.push(border);
-  }
-
-  const tableOutput = tableLines.join('\n');
-
-  // Build full message with header
-  const headerParts: string[] = [];
-  if (includeHeader) {
-    headerParts.push('🎬 *VFX NOTES REPORT*');
-    if (projectName) headerParts.push(`📁 *Project:* ${projectName}`);
-    headerParts.push(`🎯 *Total Shots:* ${items.length}`);
-    if (includeTimestamp) {
-      const nowStr = new Date().toLocaleString('en-IN', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-      });
-      headerParts.push(`📅 *Date:* ${nowStr}`);
-    }
-    headerParts.push('━━━━━━━━━━━━━━━━━━━━━━');
-  }
-
-  const message = [
-    ...headerParts,
-    '```',
-    tableOutput,
-    '```',
-    '',
-    '_Sent via PEELA VFX Tracker_',
-  ].filter(Boolean).join('\n');
-
-  return message;
-}
-
-// Alternative clean list format
-export function generateWhatsAppListFormat(
-  items: Array<{ shotName: string; notes?: string }>,
-  projectName?: string,
-  options: { includeHeader?: boolean; includeTimestamp?: boolean } = {}
-): string {
-  if (items.length === 0) return '';
-  const { includeHeader = true, includeTimestamp = true } = options;
-
-  const lines: string[] = [];
-  if (includeHeader) {
-    lines.push('🎬 *VFX NOTES REPORT*');
-    if (projectName) lines.push(`📁 *Project:* ${projectName}`);
-    lines.push(`🎯 *Total Shots:* ${items.length}`);
-    if (includeTimestamp) {
-      const nowStr = new Date().toLocaleString('en-IN', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-      });
-      lines.push(`📅 *Date:* ${nowStr}`);
-    }
-    lines.push('━━━━━━━━━━━━━━━━━━━━━━\n');
-  }
-
-  items.forEach((item, idx) => {
-    lines.push(`*${idx + 1}. ${item.shotName || 'N/A'}*`);
-    const note = (item.notes || '').trim() || '—';
-    lines.push(`📝 ${note}\n`);
-  });
-
-  lines.push('_Sent via PEELA VFX Tracker_');
-  return lines.join('\n');
-}
 
 export default function WhatsAppShareModal({
   isOpen,
@@ -161,22 +38,29 @@ export default function WhatsAppShareModal({
   const [countryCode, setCountryCode] = useState('+91');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [contactName, setContactName] = useState('');
-  const [formatMode, setFormatMode] = useState<'grid' | 'list'>('grid');
+  const [formatMode, setFormatMode] = useState<FormatStyle>('executive');
   const [includeHeader, setIncludeHeader] = useState(true);
   const [includeTimestamp, setIncludeTimestamp] = useState(true);
   const [recents, setRecents] = useState<SavedContact[]>([]);
 
-  // Load recents & country code on mount
+  // WhatsApp In-App Backend State
+  const [backendStatus, setBackendStatus] = useState<
+    'checking' | 'connected' | 'qr_ready' | 'connecting' | 'disconnected' | 'offline'
+  >('checking');
+  const [qrCodeData, setQrCodeData] = useState<string | null>(null);
+  const [userPhone, setUserPhone] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
+  const [showQrCodeBox, setShowQrCodeBox] = useState(false);
+  const [isSendingDirect, setIsSendingDirect] = useState(false);
+  const pollingRef = useRef<any>(null);
+
+  // Load recents & last country code
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_RECENTS);
-      if (saved) {
-        setRecents(JSON.parse(saved));
-      }
+      if (saved) setRecents(JSON.parse(saved));
       const savedCode = localStorage.getItem(STORAGE_KEY_LAST_CODE);
-      if (savedCode) {
-        setCountryCode(savedCode);
-      }
+      if (savedCode) setCountryCode(savedCode);
     } catch {
       // ignore
     }
@@ -189,11 +73,77 @@ export default function WhatsAppShareModal({
     }
   }, [isOpen, shots]);
 
+  // Check and poll WhatsApp connection status
+  const checkWhatsAppStatus = async () => {
+    try {
+      const res = await fetch('/api/whatsapp/status');
+      if (!res.ok) {
+        setBackendStatus('offline');
+        return;
+      }
+      const data = await res.json();
+      setBackendStatus(data.status || 'disconnected');
+      setQrCodeData(data.qrCode || null);
+      setUserPhone(data.userPhone || null);
+      setUserName(data.userName || null);
+
+      if (data.status === 'qr_ready') {
+        setShowQrCodeBox(true);
+      } else if (data.status === 'connected') {
+        setShowQrCodeBox(false);
+      }
+    } catch {
+      setBackendStatus('offline');
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      checkWhatsAppStatus();
+      // Poll every 2.5s for real-time QR scan detection
+      pollingRef.current = setInterval(checkWhatsAppStatus, 2500);
+    } else {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    }
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [isOpen]);
+
+  // Reconnect / generate fresh QR
+  const handleReconnect = async () => {
+    try {
+      setBackendStatus('connecting');
+      const res = await fetch('/api/whatsapp/reconnect', { method: 'POST' });
+      const data = await res.json();
+      setBackendStatus(data.status || 'connecting');
+      setQrCodeData(data.qrCode || null);
+      showToast('Generating fresh WhatsApp QR Code...', 'info');
+    } catch (err: any) {
+      showToast('Error requesting QR: ' + err.message, 'error');
+    }
+  };
+
+  // Logout WhatsApp
+  const handleLogout = async () => {
+    try {
+      const res = await fetch('/api/whatsapp/logout', { method: 'POST' });
+      await res.json();
+      setBackendStatus('disconnected');
+      setQrCodeData(null);
+      setUserPhone(null);
+      setUserName(null);
+      showToast('WhatsApp logged out successfully', 'info');
+      checkWhatsAppStatus();
+    } catch (err: any) {
+      showToast('Logout error: ' + err.message, 'error');
+    }
+  };
+
   // Handle phone input change with auto country code detection
   const handlePhoneChange = (val: string) => {
     let clean = val.replace(/[^\d+]/g, '');
     if (clean.startsWith('+')) {
-      // User typed e.g. +919876543210
       if (clean.startsWith('+91') && clean.length > 3) {
         setCountryCode('+91');
         setPhoneNumber(clean.slice(3));
@@ -212,47 +162,43 @@ export default function WhatsAppShareModal({
         return;
       }
     }
-    // Remove leading 0 if 10 digits follow
     if (clean.startsWith('0') && clean.length === 11) {
       clean = clean.slice(1);
     }
     setPhoneNumber(clean);
   };
 
-  // Clean full number for WhatsApp URL
+  // Clean full number for WhatsApp JID/URL
   const fullCleanNumber = useMemo(() => {
     const raw = (phoneNumber || '').replace(/\D/g, '');
     if (!raw) return '';
     const codeDigits = countryCode.replace(/\D/g, '');
-    // If user already typed code in number, don't duplicate
     if (raw.startsWith(codeDigits) && raw.length > codeDigits.length + 6) {
       return raw;
     }
     return `${codeDigits}${raw}`;
   }, [countryCode, phoneNumber]);
 
-  // Filtered selected shots
+  // Selected shots
   const selectedShots = useMemo(() => {
     return shots.filter((s) => selectedShotIds.has(s.id));
   }, [shots, selectedShotIds]);
 
-  // Generated WhatsApp message text
+  // Formatted message text based on chosen style
   const messageText = useMemo(() => {
     const items = selectedShots.map((s) => ({
       shotName: s.shotName || s.shotNumber || 'Unnamed Shot',
       notes: s.notes,
+      scopeOfWork: s.scopeOfWork,
+      department: s.department,
     }));
 
-    if (formatMode === 'grid') {
-      return generateWhatsAppExcelGrid(items, projectName, {
-        includeHeader,
-        includeTimestamp,
-      });
+    if (formatMode === 'executive') {
+      return formatExecutiveCard(items, projectName, { includeHeader, includeTimestamp });
+    } else if (formatMode === 'list') {
+      return formatCleanList(items, projectName, { includeHeader, includeTimestamp });
     } else {
-      return generateWhatsAppListFormat(items, projectName, {
-        includeHeader,
-        includeTimestamp,
-      });
+      return formatStudioGrid(items, projectName, { includeHeader, includeTimestamp });
     }
   }, [selectedShots, projectName, formatMode, includeHeader, includeTimestamp]);
 
@@ -261,7 +207,10 @@ export default function WhatsAppShareModal({
     if (!phoneNum.trim()) return;
     try {
       const existing = recents.filter((r) => r.phone !== phoneNum);
-      const updated: SavedContact[] = [{ phone: phoneNum, name: name?.trim() || undefined }, ...existing].slice(0, 8);
+      const updated: SavedContact[] = [
+        { phone: phoneNum, name: name?.trim() || undefined },
+        ...existing,
+      ].slice(0, 8);
       setRecents(updated);
       localStorage.setItem(STORAGE_KEY_RECENTS, JSON.stringify(updated));
       localStorage.setItem(STORAGE_KEY_LAST_CODE, countryCode);
@@ -281,40 +230,68 @@ export default function WhatsAppShareModal({
     }
   };
 
-  // Launch WhatsApp Web
+  // Direct In-App Send via Baileys Multi-Device Socket
+  const handleDirectSend = async () => {
+    if (selectedShots.length === 0) {
+      showToast('Please select at least one shot', 'warning');
+      return;
+    }
+    if (!fullCleanNumber) {
+      showToast('Please enter a recipient phone number', 'warning');
+      return;
+    }
+
+    setIsSendingDirect(true);
+    try {
+      const res = await fetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: fullCleanNumber, message: messageText }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'Failed to send message');
+      }
+
+      saveToRecents(fullCleanNumber, contactName);
+      showToast(`🚀 Message sent directly to +${fullCleanNumber}!`, 'success');
+    } catch (err: any) {
+      showToast(`Error sending message: ${err.message}`, 'error');
+    } finally {
+      setIsSendingDirect(false);
+    }
+  };
+
+  // Fallback: Open WhatsApp Web tab
   const handleOpenWhatsAppWeb = () => {
     if (selectedShots.length === 0) {
       showToast('Please select at least one shot', 'warning');
       return;
     }
-
     if (!fullCleanNumber) {
       showToast('Please enter a recipient phone number', 'warning');
       return;
     }
 
     saveToRecents(fullCleanNumber, contactName);
-
     const encodedText = encodeURIComponent(messageText);
     const webUrl = `https://web.whatsapp.com/send?phone=${fullCleanNumber}&text=${encodedText}`;
     window.open(webUrl, '_blank', 'noopener,noreferrer');
-    showToast('Opening WhatsApp Web...', 'success');
+    showToast('Opening WhatsApp Web in new tab...', 'info');
   };
 
-  // Launch wa.me universal link (WhatsApp app or web)
+  // Fallback: wa.me universal link
   const handleOpenUniversalLink = () => {
     if (selectedShots.length === 0) {
       showToast('Please select at least one shot', 'warning');
       return;
     }
-
     if (!fullCleanNumber) {
       showToast('Please enter a recipient phone number', 'warning');
       return;
     }
 
     saveToRecents(fullCleanNumber, contactName);
-
     const encodedText = encodeURIComponent(messageText);
     const waUrl = `https://wa.me/${fullCleanNumber}?text=${encodedText}`;
     window.open(waUrl, '_blank', 'noopener,noreferrer');
@@ -330,7 +307,6 @@ export default function WhatsAppShareModal({
       await navigator.clipboard.writeText(messageText);
       showToast('Copied WhatsApp message to clipboard!', 'success');
     } catch {
-      // fallback
       const textarea = document.createElement('textarea');
       textarea.value = messageText;
       document.body.appendChild(textarea);
@@ -341,7 +317,6 @@ export default function WhatsAppShareModal({
     }
   };
 
-  // Toggle shot selection
   const toggleShot = (id: string) => {
     setSelectedShotIds((prev) => {
       const next = new Set(prev);
@@ -351,7 +326,6 @@ export default function WhatsAppShareModal({
     });
   };
 
-  // Select only shots with notes
   const selectOnlyWithNotes = () => {
     const withNotes = shots.filter((s) => s.notes && s.notes.trim().length > 0).map((s) => s.id);
     setSelectedShotIds(new Set(withNotes));
@@ -365,7 +339,7 @@ export default function WhatsAppShareModal({
       isOpen={isOpen}
       onClose={onClose}
       title="📱 Send Shot Notes via WhatsApp"
-      width="680px"
+      width="700px"
       footer={
         <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
           <button className="btn btn-secondary btn-sm" onClick={handleCopyMessage}>
@@ -379,22 +353,134 @@ export default function WhatsAppShareModal({
               className="btn btn-whatsapp-outline"
               onClick={handleOpenUniversalLink}
               disabled={selectedShots.length === 0 || !fullCleanNumber}
-              title="Open using wa.me (Desktop app / mobile redirect)"
+              title="Open via wa.me (Desktop app / mobile)"
             >
-              Open wa.me
+              wa.me
             </button>
             <button
-              className="btn btn-whatsapp"
+              className="btn btn-whatsapp-outline"
               onClick={handleOpenWhatsAppWeb}
               disabled={selectedShots.length === 0 || !fullCleanNumber}
+              title="Open WhatsApp Web tab"
             >
-              <span>🌐 Open in WhatsApp Web</span>
+              🌐 Web
             </button>
+
+            {backendStatus === 'connected' ? (
+              <button
+                className="btn btn-whatsapp"
+                onClick={handleDirectSend}
+                disabled={selectedShots.length === 0 || !fullCleanNumber || isSendingDirect}
+              >
+                {isSendingDirect ? '⏳ Sending...' : '🚀 Send Directly via WhatsApp'}
+              </button>
+            ) : (
+              <button
+                className="btn btn-whatsapp"
+                onClick={handleOpenWhatsAppWeb}
+                disabled={selectedShots.length === 0 || !fullCleanNumber}
+              >
+                <span>🌐 Send via WhatsApp Web</span>
+              </button>
+            )}
           </div>
         </div>
       }
     >
       <div className="wa-modal-body">
+        {/* WhatsApp Connection Card */}
+        <div className={`wa-connection-card ${backendStatus === 'connected' ? 'connected' : qrCodeData ? 'qr-needed' : ''}`}>
+          <div className="wa-connection-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 600 }}>WhatsApp Web Link:</span>
+              {backendStatus === 'connected' && (
+                <span className="wa-status-pill connected">
+                  <span className="wa-status-dot green" />
+                  <span>Logged in as +{userPhone} {userName ? `(${userName})` : ''}</span>
+                </span>
+              )}
+              {backendStatus === 'qr_ready' && (
+                <span className="wa-status-pill waiting">
+                  <span className="wa-status-dot yellow" />
+                  <span>Ready to scan QR Code</span>
+                </span>
+              )}
+              {backendStatus === 'connecting' && (
+                <span className="wa-status-pill waiting">
+                  <span className="wa-status-dot yellow" />
+                  <span>Connecting to WhatsApp...</span>
+                </span>
+              )}
+              {(backendStatus === 'disconnected' || backendStatus === 'offline') && (
+                <span className="wa-status-pill offline">
+                  <span className="wa-status-dot gray" />
+                  <span>Not Linked</span>
+                </span>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              {backendStatus === 'connected' ? (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs"
+                  style={{ color: 'var(--color-danger, #ef4444)' }}
+                  onClick={handleLogout}
+                >
+                  Disconnect
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-xs"
+                    onClick={() => setShowQrCodeBox(!showQrCodeBox)}
+                  >
+                    {showQrCodeBox ? 'Hide QR' : '🔗 Scan QR Code'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-xs"
+                    onClick={handleReconnect}
+                    title="Generate fresh QR Code"
+                  >
+                    🔄 Refresh
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Interactive QR Code Box */}
+          {showQrCodeBox && backendStatus !== 'connected' && (
+            <div className="wa-qr-box">
+              <div className="wa-qr-image-wrapper">
+                {qrCodeData ? (
+                  <img src={qrCodeData} alt="WhatsApp QR Code" className="wa-qr-image" />
+                ) : (
+                  <div style={{ fontSize: '11px', color: '#6b7280', textAlign: 'center', padding: '10px' }}>
+                    ⏳ Generating QR Code...
+                  </div>
+                )}
+              </div>
+              <div className="wa-qr-instructions">
+                <div style={{ fontWeight: 700, fontSize: '13px', color: '#111827' }}>
+                  📱 How to link your WhatsApp:
+                </div>
+                <ol>
+                  <li>Open <strong>WhatsApp</strong> on your phone</li>
+                  <li>Tap <strong>Menu (3 dots)</strong> or <strong>Settings</strong></li>
+                  <li>Select <strong>Linked Devices</strong> &gt; <strong>Link a Device</strong></li>
+                  <li>Point your phone camera to this QR code to scan</li>
+                </ol>
+                <div style={{ fontSize: '11px', color: '#059669', fontWeight: 600, marginTop: '4px' }}>
+                  ⚡ Once scanned, messages will send directly from your phone number!
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Recipient Phone Input */}
         <div className="wa-section">
           <label className="wa-section-title">
@@ -431,7 +517,7 @@ export default function WhatsAppShareModal({
             <input
               type="text"
               className="form-input"
-              style={{ width: '130px' }}
+              style={{ width: '140px' }}
               placeholder="Contact Name"
               value={contactName}
               onChange={(e) => setContactName(e.target.value)}
@@ -450,7 +536,6 @@ export default function WhatsAppShareModal({
                   key={c.phone}
                   className={`wa-recent-chip ${fullCleanNumber === c.phone ? 'active' : ''}`}
                   onClick={() => {
-                    // detect code
                     if (c.phone.startsWith('91') && c.phone.length === 12) {
                       setCountryCode('+91');
                       setPhoneNumber(c.phone.slice(2));
@@ -518,7 +603,7 @@ export default function WhatsAppShareModal({
                     <input
                       type="checkbox"
                       checked={isChecked}
-                      onChange={() => {}} // handled by parent div
+                      onChange={() => {}}
                       style={{ cursor: 'pointer' }}
                     />
                     <span className="wa-shot-name">
@@ -535,24 +620,34 @@ export default function WhatsAppShareModal({
           </div>
         </div>
 
-        {/* Format and options */}
+        {/* Professional Format Selector */}
         <div className="wa-options-row">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Format:</span>
+            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Style:</span>
             <div className="wa-format-pills">
               <button
                 type="button"
-                className={`wa-format-pill ${formatMode === 'grid' ? 'active' : ''}`}
-                onClick={() => setFormatMode('grid')}
+                className={`wa-format-pill ${formatMode === 'executive' ? 'active' : ''}`}
+                onClick={() => setFormatMode('executive')}
+                title="Professional Studio Format with stylish badges & dividers"
               >
-                📊 Excel Grid (Table)
+                ✨ Executive Card
               </button>
               <button
                 type="button"
                 className={`wa-format-pill ${formatMode === 'list' ? 'active' : ''}`}
                 onClick={() => setFormatMode('list')}
+                title="Clean bulleted summary"
               >
                 📝 Clean List
+              </button>
+              <button
+                type="button"
+                className={`wa-format-pill ${formatMode === 'grid' ? 'active' : ''}`}
+                onClick={() => setFormatMode('grid')}
+                title="Unicode double-border spreadsheet grid"
+              >
+                📊 Studio Grid
               </button>
             </div>
           </div>
@@ -580,7 +675,7 @@ export default function WhatsAppShareModal({
         {/* Live Message Preview */}
         <div className="wa-section">
           <div className="wa-section-title">
-            <span>Live WhatsApp Preview</span>
+            <span>Live WhatsApp Message Preview</span>
             <span style={{ fontSize: '11px', color: '#25D366' }}>
               {selectedShots.length} shot{selectedShots.length !== 1 ? 's' : ''} in message
             </span>
@@ -589,34 +684,11 @@ export default function WhatsAppShareModal({
           <div className="wa-preview-container">
             <div className="wa-preview-bubble">
               {formatMode === 'grid' ? (
-                <>
-                  {includeHeader && (
-                    <div style={{ whiteSpace: 'pre-line', marginBottom: '6px' }}>
-                      <strong>🎬 VFX NOTES REPORT</strong>
-                      {projectName && <div>📁 Project: <strong>{projectName}</strong></div>}
-                      <div>🎯 Total Shots: <strong>{selectedShots.length}</strong></div>
-                      {includeTimestamp && (
-                        <div>📅 Date: {new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</div>
-                      )}
-                      <div>━━━━━━━━━━━━━━━━━━━━━━</div>
-                    </div>
-                  )}
-                  <pre>
-                    {generateWhatsAppExcelGrid(
-                      selectedShots.map((s) => ({
-                        shotName: s.shotName || s.shotNumber || 'Unnamed',
-                        notes: s.notes,
-                      })),
-                      undefined,
-                      { includeHeader: false }
-                    ).replace(/^```\n?/, '').replace(/\n?```\n?.*$/, '')}
-                  </pre>
-                  <div style={{ fontSize: '11px', opacity: 0.8, marginTop: '4px' }}>
-                    _Sent via PEELA VFX Tracker_
-                  </div>
-                </>
+                <pre style={{ margin: 0, fontFamily: 'Consolas, monospace', fontSize: '11.5px', whiteSpace: 'pre', overflowX: 'auto', background: 'transparent', border: 'none', padding: 0 }}>
+                  {messageText}
+                </pre>
               ) : (
-                <div style={{ whiteSpace: 'pre-line' }}>{messageText}</div>
+                messageText
               )}
             </div>
             <div className="wa-char-count">{messageText.length} characters</div>
