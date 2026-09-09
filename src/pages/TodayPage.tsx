@@ -11,7 +11,7 @@ import {
 } from '../store';
 import type { Shot, ColumnDef } from '../types';
 import { STATUS_OPTIONS, DELIVERY_STATUS_OPTIONS, PRIORITY_OPTIONS, DEPARTMENT_OPTIONS } from '../types';
-import { formatDate, now, today, daysRemainingText, daysRemainingSeverity } from '../utils';
+import { formatDate, now, today, daysRemainingText, daysRemainingSeverity, parseDepartmentList } from '../utils';
 import DataGrid from '../components/DataGrid';
 import TopBar from '../components/TopBar';
 import { StatusBadge, DeliveryBadge, PriorityBadge, DepartmentBadge } from '../components/StatusBadge';
@@ -98,12 +98,12 @@ export default function TodayPage() {
     {
       key: 'department',
       label: 'Department',
-      width: 150,
+      width: 190,
       editable: true,
-      type: 'select',
+      type: 'multiselect',
       options: DEPARTMENT_OPTIONS,
       render: (row) => <DepartmentBadge department={row.department} />,
-      getValue: (row) => row.department || '',
+      getValue: (row) => Array.isArray(row.department) ? row.department.join(', ') : (row.department ? String(row.department) : ''),
     },
     {
       key: 'notes', label: 'Notes', width: 250,
@@ -214,7 +214,7 @@ export default function TodayPage() {
   ], [state.projects, state.artists, getProjectName, getArtistNames, dispatch, showToast, todayStr]);
 
   const handleRowUpdate = (row: Shot) => {
-    dispatch({ type: 'UPDATE_SHOT', payload: { ...row, updatedAt: now() } });
+    dispatch({ type: 'UPDATE_SHOT', payload: { ...row, department: parseDepartmentList(row.department), updatedAt: now() } });
   };
 
   return (

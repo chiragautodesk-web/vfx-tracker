@@ -12,7 +12,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [error, setError] = useState('');
 
   const expectedUsername = import.meta.env.VITE_APP_USERNAME || 'admin';
-  const expectedPassword = import.meta.env.VITE_APP_PASSWORD || 'password';
+  const expectedPassword = import.meta.env.VITE_APP_PASSWORD || 'Success@12345';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

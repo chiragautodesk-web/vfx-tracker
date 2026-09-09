@@ -38,7 +38,17 @@ export interface ClientFeedback {
   type: 'kickback' | 'modification' | 'feedback';
 }
 
-export type Department = 'Roto' | 'Camera Tracking' | 'Object Tracking' | 'Prep';
+export type Department =
+  | 'Roto'
+  | 'Prep'
+  | 'Object Track'
+  | 'Camera Track'
+  | 'Object Tracking'
+  | 'Camera Tracking'
+  | 'Matchmove'
+  | 'Paint'
+  | 'Comp'
+  | string;
 
 export interface Shot {
   id: string;
@@ -46,7 +56,8 @@ export interface Shot {
   shotNumber?: string;
   shotName: string;
   scopeOfWork?: string;
-  department?: Department | string;
+  department?: Department[] | Department | string[] | string;
+  departments?: Department[];
   description: string;
   notes?: string;
   artistIds: string[];
@@ -77,10 +88,13 @@ export interface DepartmentOption {
 }
 
 export const DEPARTMENT_OPTIONS: DepartmentOption[] = [
-  { value: 'Roto',             label: 'Roto',             color: '#8b5cf6' },
-  { value: 'Camera Tracking',  label: 'Camera Tracking',  color: '#0284c7' },
-  { value: 'Object Tracking',  label: 'Object Tracking',  color: '#059669' },
-  { value: 'Prep',             label: 'Prep',             color: '#f59e0b' },
+  { value: 'Roto',          label: 'Roto',          color: '#8b5cf6' },
+  { value: 'Prep',          label: 'Prep',          color: '#f59e0b' },
+  { value: 'Object Track',  label: 'Object Track',  color: '#059669' },
+  { value: 'Camera Track',  label: 'Camera Track',  color: '#0284c7' },
+  { value: 'Matchmove',     label: 'Matchmove',     color: '#06b6d4' },
+  { value: 'Paint',         label: 'Paint',         color: '#f97316' },
+  { value: 'Comp',          label: 'Comp',          color: '#ec4899' },
 ];
 
 // ===== Status options =====

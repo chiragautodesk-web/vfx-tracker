@@ -2,8 +2,8 @@ import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { useStore } from '../store';
 import Modal from './Modal';
-import { generateId, now } from '../utils';
-import type { Shot, ShotStatus, Project } from '../types';
+import { generateId, now, parseDepartmentList } from '../utils';
+import type { Shot, ShotStatus, Project, Department } from '../types';
 import './ExcelSyncModal.css';
 
 interface ExcelSyncModalProps {
@@ -15,7 +15,7 @@ interface ExcelSyncModalProps {
 const TRACKER_FIELDS = [
   { id: 'shotName', label: 'Shot Name (Identifier)' },
   { id: 'scopeOfWork', label: 'Scope of Work' },
-  { id: 'department', label: 'Department (Roto, Camera Tracking, Object Tracking, Prep)' },
+  { id: 'department', label: 'Department(s) (Roto, Prep, Object Track, etc. - supports multiple)' },
   { id: 'description', label: 'Description' },
   { id: 'notes', label: 'Notes' },
   { id: 'artistName', label: 'Assigned Artists (Names, comma separated)' },
@@ -147,7 +147,8 @@ export default function ExcelSyncModal({ isOpen, onClose, project }: ExcelSyncMo
       const eta = mapping.eta ? rawDate(row[mapping.eta]) : '';
       const finalDel = mapping.finalDeliveryDate ? rawDate(row[mapping.finalDeliveryDate]) : '';
       const scopeOfWork = mapping.scopeOfWork ? String(row[mapping.scopeOfWork] || '').trim() : '';
-      const department = mapping.department ? String(row[mapping.department] || '').trim() : '';
+      const departmentStr = mapping.department ? String(row[mapping.department] || '').trim() : '';
+      const parsedDepartment: Department[] = parseDepartmentList(departmentStr);
       const shotName = mapping.shotName ? String(row[mapping.shotName]) : '';
       const desc = mapping.description ? String(row[mapping.description]) : '';
       const notes = mapping.notes ? String(row[mapping.notes]) : '';
@@ -166,7 +167,15 @@ export default function ExcelSyncModal({ isOpen, onClose, project }: ExcelSyncMo
         if (notes && existing.notes !== notes) { newShot.notes = notes; changed = true; }
         if (finalDel && existing.finalDeliveryDate !== finalDel) { newShot.finalDeliveryDate = finalDel; changed = true; }
         if (scopeOfWork && existing.scopeOfWork !== scopeOfWork) { newShot.scopeOfWork = scopeOfWork; changed = true; }
-        if (department && existing.department !== department) { newShot.department = department; changed = true; }
+        if (departmentStr) {
+          const currentDeptStr = Array.isArray(existing.department)
+            ? existing.department.join(', ')
+            : String(existing.department || '');
+          if (currentDeptStr.toLowerCase() !== departmentStr.toLowerCase()) {
+            newShot.department = parsedDepartment;
+            changed = true;
+          }
+        }
         
         if (mapping.clientFeedback && row[mapping.clientFeedback]) {
            const note = String(row[mapping.clientFeedback]).trim();
@@ -196,7 +205,7 @@ export default function ExcelSyncModal({ isOpen, onClose, project }: ExcelSyncMo
           shotNumber: shotIdentifier,
           shotName: shotName || shotIdentifier,
           scopeOfWork,
-          department: department || 'Roto',
+          department: parsedDepartment,
           description: desc,
           notes,
           artistIds,

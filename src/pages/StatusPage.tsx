@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useStore, useProjectName, useArtistNames, useStatusCounts } from '../store';
 import type { Shot, ColumnDef, ClientFeedback } from '../types';
 import { STATUS_OPTIONS, DEPARTMENT_OPTIONS } from '../types';
-import { formatDate, generateId, now } from '../utils';
+import { formatDate, generateId, now, parseDepartmentList } from '../utils';
 import DataGrid from '../components/DataGrid';
 import TopBar from '../components/TopBar';
 import Modal from '../components/Modal';
@@ -49,10 +49,12 @@ export default function StatusPage() {
     {
       key: 'department',
       label: 'Department',
-      width: 150,
+      width: 190,
+      editable: true,
+      type: 'multiselect',
       options: DEPARTMENT_OPTIONS,
       render: (row) => <DepartmentBadge department={row.department} />,
-      getValue: (row) => row.department || '',
+      getValue: (row) => Array.isArray(row.department) ? row.department.join(', ') : (row.department ? String(row.department) : ''),
     },
     {
       key: 'notes', label: 'Notes', width: 250,
@@ -132,7 +134,7 @@ export default function StatusPage() {
   ], [getProjectName, getArtistNames, state.artists]);
 
   const handleRowUpdate = (row: Shot) => {
-    dispatch({ type: 'UPDATE_SHOT', payload: { ...row, updatedAt: now() } });
+    dispatch({ type: 'UPDATE_SHOT', payload: { ...row, department: parseDepartmentList(row.department), updatedAt: now() } });
   };
 
   const handleAddFeedback = () => {

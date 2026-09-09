@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import type { AppState, AppAction, Project, Shot, Artist } from './types';
-import { now, today, generateId } from './utils';
+import { now, today, generateId, parseDepartmentList } from './utils';
 import { supabase } from './supabaseClient';
 
 /** Returns YYYY-MM-DD offset from today */
@@ -58,7 +58,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
   const shots: Shot[] = [
     {
       id: 'shot-1', projectId: 'proj-1', shotNumber: 'DQ_010', shotName: 'Dragon Reveal',
-      scopeOfWork: 'Dragon wireframe & texture cleanup', department: 'Roto',
+      scopeOfWork: 'Dragon wireframe & texture cleanup', department: ['Roto', 'Prep'],
       description: 'Full CG dragon emerging from mountain',
       artistIds: ['artist-1'], status: 'in-progress', priority: 'critical',
       eta: daysFromNow(0), finalDeliveryDate: daysFromNow(0), deliveryStatus: 'to-be-delivered',
@@ -69,7 +69,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     },
     {
       id: 'shot-2', projectId: 'proj-1', shotNumber: 'DQ_020', shotName: 'Dragon Flight',
-      scopeOfWork: 'Canyon tracking markers & camera solve', department: 'Camera Tracking',
+      scopeOfWork: 'Canyon tracking markers & camera solve', department: ['Camera Tracking'],
       description: 'Dragon flying over canyon',
       artistIds: ['artist-2'], status: 'wip', priority: 'high',
       eta: daysFromNow(0), finalDeliveryDate: daysFromNow(1), deliveryStatus: 'to-be-delivered',
@@ -78,7 +78,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     },
     {
       id: 'shot-3', projectId: 'proj-1', shotNumber: 'DQ_030', shotName: 'Fire Breath',
-      scopeOfWork: 'Dragon head matchmove & fire emitter track', department: 'Object Tracking',
+      scopeOfWork: 'Dragon head matchmove & fire emitter track', department: ['Object Tracking'],
       description: 'Dragon fire breath FX with hero interaction',
       artistIds: ['artist-2'], status: 'pending', priority: 'high',
       eta: daysFromNow(3), finalDeliveryDate: daysFromNow(5), deliveryStatus: 'pending',
@@ -87,7 +87,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     },
     {
       id: 'shot-4', projectId: 'proj-1', shotNumber: 'DQ_040', shotName: 'Dragon Landing',
-      scopeOfWork: 'Clean plate ground dust & rig removal', department: 'Prep',
+      scopeOfWork: 'Clean plate ground dust & rig removal', department: ['Prep'],
       description: 'Dragon landing with ground impact FX',
       artistIds: ['artist-3'], status: 'approved', priority: 'medium',
       eta: daysFromNow(-2), finalDeliveryDate: daysFromNow(0), deliveryStatus: 'to-be-delivered',
@@ -98,7 +98,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     },
     {
       id: 'shot-5', projectId: 'proj-2', shotNumber: 'CD_010', shotName: 'Building Collapse',
-      scopeOfWork: 'Building window reflection paint & debris prep', department: 'Prep',
+      scopeOfWork: 'Building window reflection paint & debris prep', department: ['Prep', 'Object Tracking'],
       description: 'Hero building collapse with debris',
       artistIds: ['artist-2'], status: 'client-review', priority: 'critical',
       eta: daysFromNow(0), finalDeliveryDate: daysFromNow(0), deliveryStatus: 'to-be-delivered',
@@ -109,7 +109,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     },
     {
       id: 'shot-6', projectId: 'proj-2', shotNumber: 'CD_020', shotName: 'Street Explosion',
-      scopeOfWork: 'Moving car matchmove & tire tracking', department: 'Object Tracking',
+      scopeOfWork: 'Moving car matchmove & tire tracking', department: ['Object Tracking'],
       description: 'Street-level explosion with car flip',
       artistIds: ['artist-1'], status: 'changes-required', priority: 'high',
       eta: daysFromNow(-1), finalDeliveryDate: daysFromNow(0), deliveryStatus: 'to-be-delivered',
@@ -120,7 +120,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     },
     {
       id: 'shot-7', projectId: 'proj-2', shotNumber: 'CD_030', shotName: 'Aerial Shot',
-      scopeOfWork: 'Aerial drone 3D camera solve', department: 'Camera Tracking',
+      scopeOfWork: 'Aerial drone 3D camera solve', department: ['Camera Tracking'],
       description: 'Aerial view of destruction aftermath',
       artistIds: ['artist-4'], status: 'internal-review', priority: 'medium',
       eta: daysFromNow(2), finalDeliveryDate: daysFromNow(4), deliveryStatus: 'pending',
@@ -129,7 +129,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     },
     {
       id: 'shot-8', projectId: 'proj-2', shotNumber: 'CD_040', shotName: 'Hero Rescue',
-      scopeOfWork: 'Character roto edge isolation for comp', department: 'Roto',
+      scopeOfWork: 'Character roto edge isolation for comp', department: ['Roto'],
       description: 'Hero rescue sequence with falling debris',
       artistIds: ['artist-3'], status: 'delivered', priority: 'low',
       eta: daysFromNow(-5), finalDeliveryDate: daysFromNow(-5), deliveryStatus: 'delivered',
@@ -138,7 +138,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     },
     {
       id: 'shot-9', projectId: 'proj-3', shotNumber: 'UW_010', shotName: 'Deep Sea Dive',
-      scopeOfWork: 'Submarine tracking & particulate clean plate', department: 'Prep',
+      scopeOfWork: 'Submarine tracking & particulate clean plate', department: ['Prep'],
       description: 'Camera dive into deep ocean environment',
       artistIds: ['artist-4'], status: 'pending', priority: 'medium',
       eta: daysFromNow(7), finalDeliveryDate: daysFromNow(10), deliveryStatus: 'pending',
@@ -147,7 +147,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
     },
     {
       id: 'shot-10', projectId: 'proj-3', shotNumber: 'UW_020', shotName: 'Creature Encounter',
-      scopeOfWork: 'Creature tentacle articulation roto', department: 'Roto',
+      scopeOfWork: 'Creature tentacle articulation roto', department: ['Roto', 'Prep'],
       description: 'Bioluminescent creature reveal',
       artistIds: ['artist-1'], status: 'client-feedback', priority: 'high',
       eta: daysFromNow(0), finalDeliveryDate: daysFromNow(1), deliveryStatus: 'pending',
@@ -164,12 +164,14 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
 function migrateShot(s: any): Shot {
   const shotName = s.shotName || s.shotNumber || 'Untitled Shot';
   const shotNumber = s.shotNumber || s.shotName || '';
+  const department = parseDepartmentList(s.department || s.departments);
+
   return {
     ...s,
     shotName,
     shotNumber,
     scopeOfWork: s.scopeOfWork || '',
-    department: s.department || '',
+    department,
     artistIds: Array.isArray(s.artistIds) ? s.artistIds : (s.artistId ? [s.artistId] : []),
     clientFeedback: Array.isArray(s.clientFeedback) ? s.clientFeedback : [],
   };
@@ -224,12 +226,12 @@ function appReducer(state: AppState, action: AppAction): AppState {
       };
 
     case 'ADD_SHOT':
-      return { ...state, shots: [...state.shots, action.payload] };
+      return { ...state, shots: [...state.shots, { ...action.payload, department: parseDepartmentList(action.payload.department) }] };
 
     case 'UPDATE_SHOT':
       return {
         ...state,
-        shots: state.shots.map((s) => (s.id === action.payload.id ? action.payload : s)),
+        shots: state.shots.map((s) => (s.id === action.payload.id ? { ...action.payload, department: parseDepartmentList(action.payload.department) } : s)),
       };
 
     case 'DELETE_SHOT':

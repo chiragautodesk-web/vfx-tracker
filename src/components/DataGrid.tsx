@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import type { ColumnDef } from '../types';
 import './DataGrid.css';
 
@@ -119,6 +119,19 @@ export default function DataGrid<T extends { id: string }>({
   const cancelEdit = () => {
     setEditingCell(null);
   };
+
+  // Close editing cell on click outside
+  useEffect(() => {
+    if (!editingCell) return;
+    const handleDocumentClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.cell-edit-multiselect') && !target.closest('.editing')) {
+        setEditingCell(null);
+      }
+    };
+    document.addEventListener('mousedown', handleDocumentClick);
+    return () => document.removeEventListener('mousedown', handleDocumentClick);
+  }, [editingCell]);
 
   // Column resize
   const onResizeStart = useCallback((e: React.MouseEvent, colKey: string) => {
@@ -275,7 +288,10 @@ export default function DataGrid<T extends { id: string }>({
                           onDoubleClick={(e) => {
                             if (col.editable && !isEditing) {
                               e.stopPropagation();
-                              startEdit(row.id, col.key, rawValue);
+                              const val = col.type === 'multiselect'
+                                ? (Array.isArray(rawValue) ? rawValue : (typeof rawValue === 'string' && rawValue.trim() ? rawValue.split(/[,/\\+;&|]+/).map((s: string) => s.trim()).filter(Boolean) : []))
+                                : rawValue;
+                              startEdit(row.id, col.key, val);
                             }
                           }}
                         >
@@ -285,27 +301,85 @@ export default function DataGrid<T extends { id: string }>({
                                 <div style={{ padding: '0 var(--space-3)', height: '100%', display: 'flex', alignItems: 'center' }}>
                                   <span className="cell-text">{displayValue}</span>
                                 </div>
-                                <div className="cell-edit-multiselect" style={{ position: 'absolute', top: '100%', left: 0, zIndex: 10, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: 'var(--space-2)', boxShadow: 'var(--shadow-md)', minWidth: '180px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <div style={{ maxHeight: '150px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                  {col.options.map((opt) => (
-                                    <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: 'var(--text-sm)' }}>
-                                      <input
-                                        type="checkbox"
-                                        checked={Array.isArray(editValue) && editValue.includes(opt.value)}
-                                        onChange={(e) => {
-                                          const arr = Array.isArray(editValue) ? [...editValue] : [];
-                                          if (e.target.checked) setEditValue([...arr, opt.value]);
-                                          else setEditValue(arr.filter((v: string) => v !== opt.value));
-                                        }}
-                                      />
-                                      {opt.label}
-                                    </label>
-                                  ))}
-                                </div>
-                                <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
-                                  <button className="btn btn-primary btn-sm" onClick={() => commitEdit(row)} style={{ flex: 1, padding: '4px' }}>Save</button>
-                                  <button className="btn btn-secondary btn-sm" onClick={cancelEdit} style={{ flex: 1, padding: '4px' }}>Cancel</button>
-                                </div>
+                                <div
+                                  className="cell-edit-multiselect"
+                                  onClick={(e) => e.stopPropagation()}
+                                  style={{
+                                    position: 'absolute',
+                                    top: '100%',
+                                    left: 0,
+                                    zIndex: 50,
+                                    background: 'var(--bg-secondary)',
+                                    border: '1px solid var(--border-color)',
+                                    borderRadius: 'var(--radius-md)',
+                                    padding: 'var(--space-3)',
+                                    boxShadow: 'var(--shadow-xl)',
+                                    minWidth: '210px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '6px',
+                                    backdropFilter: 'blur(12px)',
+                                  }}
+                                >
+                                  <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                    Select {col.label}
+                                  </div>
+                                  <div style={{ maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                    {col.options.map((opt) => {
+                                      const isChecked = Array.isArray(editValue)
+                                        ? editValue.some((v: string) => {
+                                            const vL = String(v).toLowerCase();
+                                            const optL = opt.value.toLowerCase();
+                                            return vL === optL ||
+                                              (optL === 'object track' && vL === 'object tracking') ||
+                                              (optL === 'camera track' && vL === 'camera tracking');
+                                          })
+                                        : false;
+
+                                      return (
+                                        <label
+                                          key={opt.value}
+                                          style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            cursor: 'pointer',
+                                            fontSize: 'var(--text-sm)',
+                                            padding: '4px 6px',
+                                            borderRadius: 'var(--radius-sm)',
+                                            background: isChecked ? 'rgba(255,255,255,0.06)' : 'transparent',
+                                          }}
+                                        >
+                                          <input
+                                            type="checkbox"
+                                            checked={isChecked}
+                                            onChange={(e) => {
+                                              const arr = Array.isArray(editValue) ? [...editValue] : [];
+                                              if (e.target.checked) {
+                                                setEditValue([...arr, opt.value]);
+                                              } else {
+                                                setEditValue(arr.filter((v: string) => {
+                                                  const vL = String(v).toLowerCase();
+                                                  const optL = opt.value.toLowerCase();
+                                                  return vL !== optL &&
+                                                    !(optL === 'object track' && vL === 'object tracking') &&
+                                                    !(optL === 'camera track' && vL === 'camera tracking');
+                                                }));
+                                              }
+                                            }}
+                                          />
+                                          {opt.color && (
+                                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: opt.color, flexShrink: 0 }} />
+                                          )}
+                                          <span>{opt.label}</span>
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                  <div style={{ display: 'flex', gap: '6px', marginTop: '4px', paddingTop: '6px', borderTop: '1px solid var(--border-subtle)' }}>
+                                    <button className="btn btn-primary btn-sm" onClick={() => commitEdit(row)} style={{ flex: 1, padding: '4px 8px' }}>Save</button>
+                                    <button className="btn btn-secondary btn-sm" onClick={cancelEdit} style={{ flex: 1, padding: '4px 8px' }}>Cancel</button>
+                                  </div>
                                 </div>
                               </>
                             ) : col.type === 'select' && col.options ? (

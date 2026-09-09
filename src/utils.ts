@@ -1,5 +1,5 @@
 import { STATUS_OPTIONS, DELIVERY_STATUS_OPTIONS, PRIORITY_OPTIONS, PROJECT_STATUS_OPTIONS, DEPARTMENT_OPTIONS } from './types';
-import type { ShotStatus, DeliveryStatus, Priority, Project, Shot, Artist } from './types';
+import type { ShotStatus, DeliveryStatus, Priority, Project, Shot, Artist, Department } from './types';
 import * as XLSX from 'xlsx';
 
 /** Generate a unique ID */
@@ -47,13 +47,57 @@ export function getStatusColor(value: ShotStatus): string {
 /** Get department label */
 export function getDepartmentLabel(value?: string): string {
   if (!value) return '—';
-  return DEPARTMENT_OPTIONS.find((d) => d.value === value)?.label ?? value;
+  const valLower = value.trim().toLowerCase();
+  if (valLower === 'object tracking' || valLower === 'object track') return 'Object Track';
+  if (valLower === 'camera tracking' || valLower === 'camera track') return 'Camera Track';
+  const match = DEPARTMENT_OPTIONS.find((d) => d.value.toLowerCase() === valLower);
+  return match?.label ?? value;
 }
 
 /** Get department color */
 export function getDepartmentColor(value?: string): string {
   if (!value) return '#64748b';
-  return DEPARTMENT_OPTIONS.find((d) => d.value === value)?.color ?? '#64748b';
+  const valLower = value.trim().toLowerCase();
+  if (valLower === 'object tracking' || valLower === 'object track') return '#059669';
+  if (valLower === 'camera tracking' || valLower === 'camera track') return '#0284c7';
+  const match = DEPARTMENT_OPTIONS.find((d) => d.value.toLowerCase() === valLower);
+  return match?.color ?? '#64748b';
+}
+
+/** Parse department string or array into normalized Department[] */
+export function parseDepartmentList(value: unknown): Department[] {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.map((v) => {
+      const s = String(v).trim();
+      const sLower = s.toLowerCase();
+      if (sLower === 'object tracking') return 'Object Track';
+      if (sLower === 'camera tracking') return 'Camera Track';
+      const match = DEPARTMENT_OPTIONS.find((d) => d.value.toLowerCase() === sLower);
+      return match ? match.value : s;
+    }).filter(Boolean) as Department[];
+  }
+  if (typeof value === 'string') {
+    return value
+      .split(/[,/\\+;&|]+/)
+      .map((v) => {
+        const s = v.trim();
+        const sLower = s.toLowerCase();
+        if (sLower === 'object tracking') return 'Object Track';
+        if (sLower === 'camera tracking') return 'Camera Track';
+        const match = DEPARTMENT_OPTIONS.find((d) => d.value.toLowerCase() === sLower);
+        return match ? match.value : s;
+      })
+      .filter(Boolean) as Department[];
+  }
+  return [];
+}
+
+/** Get comma-separated string for department(s) */
+export function formatDepartments(value?: string | string[]): string {
+  if (!value) return '';
+  if (Array.isArray(value)) return value.join(', ');
+  return String(value);
 }
 
 /** Get delivery status label */
@@ -193,7 +237,7 @@ export function exportFullBackupToExcel(
   const shotsData = shots.map((s) => ({
     'Shot Name': s.shotName || s.shotNumber || '—',
     'Scope of Work': s.scopeOfWork || '—',
-    'Department': s.department || '—',
+    'Department': Array.isArray(s.department) ? s.department.join(', ') : (s.department || '—'),
     'Project': projectMap.get(s.projectId) || s.projectId,
     'Status': getStatusLabel(s.status),
     'Priority': getPriorityLabel(s.priority),

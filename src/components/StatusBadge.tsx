@@ -4,30 +4,43 @@ import {
   getDeliveryStatusColor, getDeliveryStatusLabel, 
   getPriorityColor, getPriorityLabel, 
   getProjectStatusColor, getProjectStatusLabel,
-  getDepartmentColor, getDepartmentLabel 
+  getDepartmentColor, getDepartmentLabel,
+  parseDepartmentList
 } from '../utils';
 
 interface StatusBadgeProps {
   status: ShotStatus;
 }
 
-export function DepartmentBadge({ department }: { department?: string }) {
-  if (!department) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
-  const color = getDepartmentColor(department);
+export function DepartmentBadge({ department }: { department?: unknown }) {
+  const depts = parseDepartmentList(department);
+
+  if (!depts || depts.length === 0) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
+
   return (
-    <span
-      className="badge"
-      style={{
-        color,
-        background: `${color}18`,
-        border: `1px solid ${color}35`,
-        boxShadow: `0 0 8px ${color}12`,
-        fontWeight: 600,
-      }}
-    >
-      <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
-      {getDepartmentLabel(department)}
-    </span>
+    <div style={{ display: 'inline-flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
+      {depts.map((dept) => {
+        const color = getDepartmentColor(dept);
+        return (
+          <span
+            key={dept}
+            className="badge"
+            style={{
+              color,
+              background: `${color}18`,
+              border: `1px solid ${color}35`,
+              boxShadow: `0 0 8px ${color}12`,
+              fontWeight: 600,
+              fontSize: 'var(--text-xs)',
+              padding: '2px 8px',
+            }}
+          >
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
+            {getDepartmentLabel(dept)}
+          </span>
+        );
+      })}
+    </div>
   );
 }
 

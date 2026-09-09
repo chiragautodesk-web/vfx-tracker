@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useStore, useProjectName, useArtistNames } from '../store';
 import type { Shot, ColumnDef, ShotStatus, DeliveryStatus, Priority, Department } from '../types';
 import { STATUS_OPTIONS, DELIVERY_STATUS_OPTIONS, PRIORITY_OPTIONS, DEPARTMENT_OPTIONS } from '../types';
-import { generateId, now, formatDate } from '../utils';
+import { generateId, now, formatDate, parseDepartmentList } from '../utils';
 import DataGrid from '../components/DataGrid';
 import TopBar from '../components/TopBar';
 import Modal from '../components/Modal';
@@ -31,7 +31,7 @@ export default function ShotsPage() {
     id: '',
     shotName: '',
     scopeOfWork: '',
-    department: 'Roto' as Department,
+    department: ['Roto'] as Department[],
     description: '',
     notes: '',
     projectId: state.selectedProjectId || (state.projects[0]?.id ?? ''),
@@ -76,12 +76,12 @@ export default function ShotsPage() {
     {
       key: 'department',
       label: 'Department',
-      width: 160,
+      width: 190,
       editable: true,
-      type: 'select',
+      type: 'multiselect',
       options: DEPARTMENT_OPTIONS,
       render: (row) => <DepartmentBadge department={row.department} />,
-      getValue: (row) => row.department || '',
+      getValue: (row) => Array.isArray(row.department) ? row.department.join(', ') : (row.department ? String(row.department) : ''),
     },
     {
       key: 'notes', label: 'Notes', width: 250,
@@ -174,7 +174,7 @@ export default function ShotsPage() {
       shotName,
       shotNumber: existing?.shotNumber || shotName,
       scopeOfWork: form.scopeOfWork.trim(),
-      department: form.department,
+      department: parseDepartmentList(form.department),
       description: form.description.trim(),
       notes: form.notes?.trim() || '',
       artistIds: form.artistIds,
@@ -203,7 +203,7 @@ export default function ShotsPage() {
   };
 
   const handleRowUpdate = (row: Shot) => {
-    dispatch({ type: 'UPDATE_SHOT', payload: { ...row, updatedAt: now() } });
+    dispatch({ type: 'UPDATE_SHOT', payload: { ...row, department: parseDepartmentList(row.department), updatedAt: now() } });
   };
 
   return (
@@ -251,7 +251,18 @@ export default function ShotsPage() {
           columns={columns}
           data={filteredShots}
           onRowUpdate={handleRowUpdate}
-          onRowEditClick={(row) => { setForm({ ...emptyForm, ...row, shotName: row.shotName || row.shotNumber || '', scopeOfWork: row.scopeOfWork || '', department: (row.department as Department) || 'Roto' }); setShowAddModal(true); }}
+          onRowEditClick={(row) => {
+            const depts = parseDepartmentList(row.department);
+            setForm({
+              ...emptyForm,
+              ...row,
+              shotName: row.shotName || row.shotNumber || '',
+              scopeOfWork: row.scopeOfWork || '',
+              department: depts.length > 0 ? depts : ['Roto'],
+              artistIds: Array.isArray(row.artistIds) ? row.artistIds : ((row as any).artistId ? [(row as any).artistId] : []),
+            });
+            setShowAddModal(true);
+          }}
           onRowDelete={(id) => setDeleteId(id)}
           onBulkDelete={(ids) => { dispatch({ type: 'DELETE_SHOTS', payload: ids }); showToast(`${ids.length} shots deleted`, 'error'); }}
           emptyMessage="No shots found — click 'Add Shot' to create one"
@@ -279,17 +290,79 @@ export default function ShotsPage() {
           <label className="form-label">Shot Name *</label>
           <input className="form-input" value={form.shotName} onChange={(e) => setForm({ ...form, shotName: e.target.value })} placeholder="e.g., Dragon Chase / DQ_050" autoFocus />
         </div>
-        <div className="form-row">
-          <div className="form-group">
-            <label className="form-label">Department</label>
-            <select className="form-input" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value as Department })}>
-              {DEPARTMENT_OPTIONS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
-            </select>
+        
+        <div className="form-group">
+          <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <span>Department(s)</span>
+            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Click to toggle multiple (e.g. Roto, Prep, Object Track)</span>
+          </label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '2px 0' }}>
+            {DEPARTMENT_OPTIONS.map((d) => {
+              const currentDepts = parseDepartmentList(form.department);
+              const isChecked = currentDepts.some((item) => {
+                const itemL = item.toLowerCase();
+                const optL = d.value.toLowerCase();
+                return itemL === optL ||
+                  (optL === 'object track' && itemL === 'object tracking') ||
+                  (optL === 'camera track' && itemL === 'camera tracking');
+              });
+
+              return (
+                <button
+                  key={d.value}
+                  type="button"
+                  onClick={() => {
+                    if (isChecked) {
+                      const next = currentDepts.filter((item) => {
+                        const itemL = item.toLowerCase();
+                        const optL = d.value.toLowerCase();
+                        return itemL !== optL &&
+                          !(optL === 'object track' && itemL === 'object tracking') &&
+                          !(optL === 'camera track' && itemL === 'camera tracking');
+                      });
+                      setForm({ ...form, department: next });
+                    } else {
+                      setForm({ ...form, department: [...currentDepts, d.value as Department] });
+                    }
+                  }}
+                  className={`dept-chip-btn ${isChecked ? 'selected' : ''}`}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 12px',
+                    borderRadius: 'var(--radius-md)',
+                    cursor: 'pointer',
+                    fontSize: 'var(--text-xs)',
+                    fontWeight: 600,
+                    border: isChecked ? `1px solid ${d.color}` : '1px solid var(--border-subtle)',
+                    background: isChecked ? `${d.color}22` : 'var(--bg-surface-elevated)',
+                    color: isChecked ? d.color : 'var(--text-secondary)',
+                    boxShadow: isChecked ? `0 0 10px ${d.color}35` : 'none',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <span style={{ 
+                    width: 8, height: 8, borderRadius: '50%', 
+                    background: isChecked ? d.color : 'var(--text-muted)',
+                    boxShadow: isChecked ? `0 0 6px ${d.color}` : 'none'
+                  }} />
+                  <span>{d.label}</span>
+                  {isChecked && <span style={{ fontSize: '11px', fontWeight: 'bold', marginLeft: '2px' }}>✓</span>}
+                </button>
+              );
+            })}
           </div>
-          <div className="form-group">
-            <label className="form-label">Scope of Work</label>
-            <input className="form-input" value={form.scopeOfWork} onChange={(e) => setForm({ ...form, scopeOfWork: e.target.value })} placeholder="e.g., Edge roto / Camera solve / Clean plate" />
-          </div>
+          {(!form.department || (Array.isArray(form.department) && form.department.length === 0)) && (
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '4px' }}>
+              No department selected
+            </div>
+          )}
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Scope of Work</label>
+          <input className="form-input" value={form.scopeOfWork} onChange={(e) => setForm({ ...form, scopeOfWork: e.target.value })} placeholder="e.g., Edge roto / Camera solve / Clean plate" />
         </div>
         <div className="form-row">
           <div className="form-group">

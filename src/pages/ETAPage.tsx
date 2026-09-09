@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useStore, useProjectName, useArtistNames, useOverdueShots } from '../store';
 import type { Shot, ColumnDef } from '../types';
 import { DELIVERY_STATUS_OPTIONS, DEPARTMENT_OPTIONS } from '../types';
-import { formatDate, daysRemainingText, daysRemainingSeverity, now, today } from '../utils';
+import { formatDate, daysRemainingText, daysRemainingSeverity, now, today, parseDepartmentList } from '../utils';
 import DataGrid from '../components/DataGrid';
 import TopBar from '../components/TopBar';
 import { DeliveryBadge, DepartmentBadge } from '../components/StatusBadge';
@@ -56,10 +56,12 @@ export default function ETAPage() {
     {
       key: 'department',
       label: 'Department',
-      width: 150,
+      width: 190,
+      editable: true,
+      type: 'multiselect',
       options: DEPARTMENT_OPTIONS,
       render: (row) => <DepartmentBadge department={row.department} />,
-      getValue: (row) => row.department || '',
+      getValue: (row) => Array.isArray(row.department) ? row.department.join(', ') : (row.department ? String(row.department) : ''),
     },
     {
       key: 'notes', label: 'Notes', width: 250,
@@ -162,7 +164,7 @@ export default function ETAPage() {
   ], [getProjectName, getArtistNames, state.artists, dispatch, showToast]);
 
   const handleRowUpdate = (row: Shot) => {
-    dispatch({ type: 'UPDATE_SHOT', payload: { ...row, updatedAt: now() } });
+    dispatch({ type: 'UPDATE_SHOT', payload: { ...row, department: parseDepartmentList(row.department), updatedAt: now() } });
   };
 
   return (
