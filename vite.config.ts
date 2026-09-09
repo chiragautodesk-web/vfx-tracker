@@ -36,15 +36,25 @@ function whatsappPlugin(): Plugin {
           }
 
           if (pathname === '/api/whatsapp/reconnect' && req.method === 'POST') {
-            const status = await service.reconnect();
-            res.statusCode = 200;
-            return res.end(JSON.stringify(status));
+            try {
+              const status = await service.reconnect();
+              res.statusCode = 200;
+              return res.end(JSON.stringify(status || { status: 'connecting' }));
+            } catch (err: any) {
+              res.statusCode = 200;
+              return res.end(JSON.stringify({ status: 'connecting', error: err.message || 'Error reconnecting' }));
+            }
           }
 
           if (pathname === '/api/whatsapp/logout' && req.method === 'POST') {
-            const result = await service.logout();
-            res.statusCode = 200;
-            return res.end(JSON.stringify(result));
+            try {
+              const result = await service.logout();
+              res.statusCode = 200;
+              return res.end(JSON.stringify(result || { success: true }));
+            } catch (err: any) {
+              res.statusCode = 200;
+              return res.end(JSON.stringify({ success: true, error: err.message }));
+            }
           }
 
           if (pathname === '/api/whatsapp/send' && req.method === 'POST') {

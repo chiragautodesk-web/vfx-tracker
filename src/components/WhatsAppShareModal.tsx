@@ -49,6 +49,7 @@ export default function WhatsAppShareModal({
   const [userName, setUserName] = useState<string | null>(null);
   const [showQrCodeBox, setShowQrCodeBox] = useState(true);
   const [isSendingDirect, setIsSendingDirect] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
   const pollingRef = useRef<any>(null);
 
   // Load recents & last country code
@@ -111,15 +112,30 @@ export default function WhatsAppShareModal({
 
   // Reconnect / generate fresh QR
   const handleReconnect = async () => {
+    if (isReconnecting) return;
+    setIsReconnecting(true);
     try {
       setBackendStatus('connecting');
       const res = await fetch('/api/whatsapp/reconnect', { method: 'POST' });
-      const data = await res.json();
-      setBackendStatus(data.status || 'connecting');
-      if (data.qrCode) setQrCodeData(data.qrCode);
-      showToast('Generating fresh WhatsApp QR Code...', 'info');
-    } catch (err: any) {
-      showToast('Error requesting QR: ' + err.message, 'error');
+      const text = await res.text();
+      if (text) {
+        try {
+          const data = JSON.parse(text);
+          setBackendStatus(data.status || 'connecting');
+          if (data.qrCode) {
+            setQrCodeData(data.qrCode);
+          }
+        } catch {
+          // ignore parse error
+        }
+      }
+      showToast('Refreshing WhatsApp QR Code...', 'info');
+      setTimeout(checkWhatsAppStatus, 1500);
+    } catch {
+      showToast('Refreshing QR Code...', 'info');
+      checkWhatsAppStatus();
+    } finally {
+      setIsReconnecting(false);
     }
   };
 
@@ -408,9 +424,10 @@ export default function WhatsAppShareModal({
                     type="button"
                     className="btn btn-ghost btn-xs"
                     onClick={handleReconnect}
+                    disabled={isReconnecting}
                     title="Generate fresh QR Code"
                   >
-                    🔄 Refresh
+                    {isReconnecting ? '⏳ Refreshing...' : '🔄 Refresh'}
                   </button>
                 </>
               )}

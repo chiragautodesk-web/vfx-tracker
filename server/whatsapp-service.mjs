@@ -19,6 +19,7 @@ class WhatsAppService {
     this.userName = null;
     this.isInitializing = false;
     this.reconnectTimeout = null;
+    this.reconnectPromise = null;
   }
 
   async init() {
@@ -210,14 +211,49 @@ class WhatsAppService {
   }
 
   async reconnect() {
-    this.cleanAuthDir();
-    this.qrCode = null;
-    this.userPhone = null;
-    this.userName = null;
-    this.status = 'connecting';
-    this.isInitializing = false;
-    await this.init();
-    return this.getStatus();
+    if (this.reconnectPromise) {
+      return this.reconnectPromise;
+    }
+
+    this.reconnectPromise = (async () => {
+      try {
+        if (this.sock) {
+          try {
+            this.sock.ev.removeAllListeners();
+            this.sock.end(undefined);
+          } catch {
+            // ignore
+          }
+          this.sock = null;
+        }
+
+        if (this.reconnectTimeout) {
+          clearTimeout(this.reconnectTimeout);
+          this.reconnectTimeout = null;
+        }
+
+        this.cleanAuthDir();
+        this.qrCode = null;
+        this.userPhone = null;
+        this.userName = null;
+        this.status = 'connecting';
+        this.isInitializing = false;
+
+        await this.init();
+
+        // Wait up to 3.5 seconds for fresh QR code generation
+        const start = Date.now();
+        while (!this.qrCode && Date.now() - start < 3500) {
+          await new Promise((r) => setTimeout(r, 150));
+        }
+
+        return this.getStatus();
+      } finally {
+        this.reconnectPromise = null;
+      }
+    })();
+
+    return this.reconnectPromise;
   }
 }
 
