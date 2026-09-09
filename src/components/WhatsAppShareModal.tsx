@@ -2,6 +2,12 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import Modal from './Modal';
 import { useToast } from './Toast';
 import type { Shot } from '../types';
+import {
+  type FormatStyle,
+  formatSimpleCleanNotes,
+  formatExecutiveCard,
+  formatStudioGrid,
+} from '../utils/whatsappFormatter';
 import './WhatsAppShareModal.css';
 
 interface WhatsAppShareModalProps {
@@ -10,13 +16,6 @@ interface WhatsAppShareModalProps {
   shots: Shot[];
   projectName?: string;
 }
-
-import {
-  type FormatStyle,
-  formatExecutiveCard,
-  formatCleanList,
-  formatStudioGrid,
-} from '../utils/whatsappFormatter';
 
 interface SavedContact {
   phone: string;
@@ -38,9 +37,7 @@ export default function WhatsAppShareModal({
   const [countryCode, setCountryCode] = useState('+91');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [contactName, setContactName] = useState('');
-  const [formatMode, setFormatMode] = useState<FormatStyle>('executive');
-  const [includeHeader, setIncludeHeader] = useState(true);
-  const [includeTimestamp, setIncludeTimestamp] = useState(true);
+  const [formatMode, setFormatMode] = useState<FormatStyle>('simple');
   const [recents, setRecents] = useState<SavedContact[]>([]);
 
   // WhatsApp In-App Backend State
@@ -50,7 +47,7 @@ export default function WhatsAppShareModal({
   const [qrCodeData, setQrCodeData] = useState<string | null>(null);
   const [userPhone, setUserPhone] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
-  const [showQrCodeBox, setShowQrCodeBox] = useState(false);
+  const [showQrCodeBox, setShowQrCodeBox] = useState(true);
   const [isSendingDirect, setIsSendingDirect] = useState(false);
   const pollingRef = useRef<any>(null);
 
@@ -83,14 +80,16 @@ export default function WhatsAppShareModal({
       }
       const data = await res.json();
       setBackendStatus(data.status || 'disconnected');
-      setQrCodeData(data.qrCode || null);
+      if (data.qrCode) {
+        setQrCodeData(data.qrCode);
+      }
       setUserPhone(data.userPhone || null);
       setUserName(data.userName || null);
 
-      if (data.status === 'qr_ready') {
-        setShowQrCodeBox(true);
-      } else if (data.status === 'connected') {
+      if (data.status === 'connected') {
         setShowQrCodeBox(false);
+      } else {
+        setShowQrCodeBox(true);
       }
     } catch {
       setBackendStatus('offline');
@@ -100,8 +99,8 @@ export default function WhatsAppShareModal({
   useEffect(() => {
     if (isOpen) {
       checkWhatsAppStatus();
-      // Poll every 2.5s for real-time QR scan detection
-      pollingRef.current = setInterval(checkWhatsAppStatus, 2500);
+      // Poll every 2 seconds for QR updates or scan detection
+      pollingRef.current = setInterval(checkWhatsAppStatus, 2000);
     } else {
       if (pollingRef.current) clearInterval(pollingRef.current);
     }
@@ -117,7 +116,7 @@ export default function WhatsAppShareModal({
       const res = await fetch('/api/whatsapp/reconnect', { method: 'POST' });
       const data = await res.json();
       setBackendStatus(data.status || 'connecting');
-      setQrCodeData(data.qrCode || null);
+      if (data.qrCode) setQrCodeData(data.qrCode);
       showToast('Generating fresh WhatsApp QR Code...', 'info');
     } catch (err: any) {
       showToast('Error requesting QR: ' + err.message, 'error');
@@ -133,6 +132,7 @@ export default function WhatsAppShareModal({
       setQrCodeData(null);
       setUserPhone(null);
       setUserName(null);
+      setShowQrCodeBox(true);
       showToast('WhatsApp logged out successfully', 'info');
       checkWhatsAppStatus();
     } catch (err: any) {
@@ -193,14 +193,14 @@ export default function WhatsAppShareModal({
       department: s.department,
     }));
 
-    if (formatMode === 'executive') {
-      return formatExecutiveCard(items, projectName, { includeHeader, includeTimestamp });
-    } else if (formatMode === 'list') {
-      return formatCleanList(items, projectName, { includeHeader, includeTimestamp });
+    if (formatMode === 'simple') {
+      return formatSimpleCleanNotes(items, projectName);
+    } else if (formatMode === 'executive') {
+      return formatExecutiveCard(items, projectName);
     } else {
-      return formatStudioGrid(items, projectName, { includeHeader, includeTimestamp });
+      return formatStudioGrid(items, projectName);
     }
-  }, [selectedShots, projectName, formatMode, includeHeader, includeTimestamp]);
+  }, [selectedShots, projectName, formatMode]);
 
   // Save number to recents
   const saveToRecents = (phoneNum: string, name?: string) => {
@@ -254,7 +254,7 @@ export default function WhatsAppShareModal({
       }
 
       saveToRecents(fullCleanNumber, contactName);
-      showToast(`🚀 Message sent directly to +${fullCleanNumber}!`, 'success');
+      showToast(`Message sent directly to +${fullCleanNumber}!`, 'success');
     } catch (err: any) {
       showToast(`Error sending message: ${err.message}`, 'error');
     } finally {
@@ -277,24 +277,16 @@ export default function WhatsAppShareModal({
     const encodedText = encodeURIComponent(messageText);
     const webUrl = `https://web.whatsapp.com/send?phone=${fullCleanNumber}&text=${encodedText}`;
     window.open(webUrl, '_blank', 'noopener,noreferrer');
-    showToast('Opening WhatsApp Web in new tab...', 'info');
+    showToast('Opening WhatsApp Web...', 'info');
   };
 
-  // Fallback: wa.me universal link
-  const handleOpenUniversalLink = () => {
-    if (selectedShots.length === 0) {
-      showToast('Please select at least one shot', 'warning');
-      return;
+  // Primary Send Handler (If linked, sends directly in app; otherwise falls back to Web)
+  const handlePrimarySend = () => {
+    if (backendStatus === 'connected') {
+      handleDirectSend();
+    } else {
+      handleOpenWhatsAppWeb();
     }
-    if (!fullCleanNumber) {
-      showToast('Please enter a recipient phone number', 'warning');
-      return;
-    }
-
-    saveToRecents(fullCleanNumber, contactName);
-    const encodedText = encodeURIComponent(messageText);
-    const waUrl = `https://wa.me/${fullCleanNumber}?text=${encodedText}`;
-    window.open(waUrl, '_blank', 'noopener,noreferrer');
   };
 
   // Copy to clipboard
@@ -345,44 +337,18 @@ export default function WhatsAppShareModal({
           <button className="btn btn-secondary btn-sm" onClick={handleCopyMessage}>
             📋 Copy Message
           </button>
-          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+          <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
             <button className="btn btn-ghost" onClick={onClose}>
               Cancel
             </button>
             <button
-              className="btn btn-whatsapp-outline"
-              onClick={handleOpenUniversalLink}
-              disabled={selectedShots.length === 0 || !fullCleanNumber}
-              title="Open via wa.me (Desktop app / mobile)"
+              className="btn btn-whatsapp"
+              onClick={handlePrimarySend}
+              disabled={selectedShots.length === 0 || !fullCleanNumber || isSendingDirect}
+              title={backendStatus === 'connected' ? 'Send directly via linked WhatsApp' : 'Open in WhatsApp Web and send'}
             >
-              wa.me
+              {isSendingDirect ? '⏳ Sending...' : '📱 Send'}
             </button>
-            <button
-              className="btn btn-whatsapp-outline"
-              onClick={handleOpenWhatsAppWeb}
-              disabled={selectedShots.length === 0 || !fullCleanNumber}
-              title="Open WhatsApp Web tab"
-            >
-              🌐 Web
-            </button>
-
-            {backendStatus === 'connected' ? (
-              <button
-                className="btn btn-whatsapp"
-                onClick={handleDirectSend}
-                disabled={selectedShots.length === 0 || !fullCleanNumber || isSendingDirect}
-              >
-                {isSendingDirect ? '⏳ Sending...' : '🚀 Send Directly via WhatsApp'}
-              </button>
-            ) : (
-              <button
-                className="btn btn-whatsapp"
-                onClick={handleOpenWhatsAppWeb}
-                disabled={selectedShots.length === 0 || !fullCleanNumber}
-              >
-                <span>🌐 Send via WhatsApp Web</span>
-              </button>
-            )}
           </div>
         </div>
       }
@@ -474,7 +440,7 @@ export default function WhatsAppShareModal({
                   <li>Point your phone camera to this QR code to scan</li>
                 </ol>
                 <div style={{ fontSize: '11px', color: '#059669', fontWeight: 600, marginTop: '4px' }}>
-                  ⚡ Once scanned, messages will send directly from your phone number!
+                  ⚡ Once scanned, click <strong>Send</strong> to send directly from this app!
                 </div>
               </div>
             </div>
@@ -620,26 +586,26 @@ export default function WhatsAppShareModal({
           </div>
         </div>
 
-        {/* Professional Format Selector */}
+        {/* Style Selector */}
         <div className="wa-options-row">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Style:</span>
+            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Format:</span>
             <div className="wa-format-pills">
+              <button
+                type="button"
+                className={`wa-format-pill ${formatMode === 'simple' ? 'active' : ''}`}
+                onClick={() => setFormatMode('simple')}
+                title="Simple clean text with Shot Name & Notes only (Default)"
+              >
+                📋 Simple Clean (Default)
+              </button>
               <button
                 type="button"
                 className={`wa-format-pill ${formatMode === 'executive' ? 'active' : ''}`}
                 onClick={() => setFormatMode('executive')}
-                title="Professional Studio Format with stylish badges & dividers"
+                title="Executive studio format with emojis & badges"
               >
                 ✨ Executive Card
-              </button>
-              <button
-                type="button"
-                className={`wa-format-pill ${formatMode === 'list' ? 'active' : ''}`}
-                onClick={() => setFormatMode('list')}
-                title="Clean bulleted summary"
-              >
-                📝 Clean List
               </button>
               <button
                 type="button"
@@ -650,25 +616,6 @@ export default function WhatsAppShareModal({
                 📊 Studio Grid
               </button>
             </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '14px' }}>
-            <label className="wa-checkbox-option">
-              <input
-                type="checkbox"
-                checked={includeHeader}
-                onChange={(e) => setIncludeHeader(e.target.checked)}
-              />
-              Header info
-            </label>
-            <label className="wa-checkbox-option">
-              <input
-                type="checkbox"
-                checked={includeTimestamp}
-                onChange={(e) => setIncludeTimestamp(e.target.checked)}
-              />
-              Timestamp
-            </label>
           </div>
         </div>
 

@@ -25,16 +25,38 @@ class WhatsAppService {
     if (this.isInitializing) return;
     this.isInitializing = true;
 
+    // Clean up any existing socket before creating a new one
+    if (this.sock) {
+      try {
+        this.sock.ev.removeAllListeners();
+        this.sock.end(undefined);
+      } catch {
+        // ignore
+      }
+      this.sock = null;
+    }
+
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+
     try {
       if (!fs.existsSync(AUTH_DIR)) {
         fs.mkdirSync(AUTH_DIR, { recursive: true });
       }
 
       const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
-      const { version } = await fetchLatestBaileysVersion();
+      let version;
+      try {
+        const fetched = await fetchLatestBaileysVersion();
+        version = fetched.version;
+      } catch {
+        // fallback to standard WhatsApp Web version
+        version = [2, 3000, 1043857760];
+      }
 
-      this.status = 'connecting';
-      this.qrCode = null;
+      this.status = this.qrCode ? 'qr_ready' : 'connecting';
 
       const sock = makeWASocket({
         version,
@@ -44,6 +66,8 @@ class WhatsAppService {
         browser: ['PEELA VFX Tracker', 'Chrome', '1.0.0'],
         syncFullHistory: false,
         markOnlineOnConnect: false,
+        connectTimeoutMs: 60000,
+        keepAliveIntervalMs: 25000,
       });
 
       this.sock = sock;
@@ -85,10 +109,15 @@ class WhatsAppService {
 
           console.log(`[WhatsApp] Connection closed (code: ${statusCode}). Reconnecting: ${shouldReconnect}`);
 
-          this.status = 'disconnected';
-          this.userPhone = null;
-          this.userName = null;
-          this.qrCode = null;
+          if (this.status !== 'connected') {
+            // Keep existing qrCode during reconnect so UI doesn't flicker
+            this.status = this.qrCode ? 'qr_ready' : 'connecting';
+          } else {
+            this.status = 'disconnected';
+            this.userPhone = null;
+            this.userName = null;
+          }
+
           this.sock = null;
 
           if (shouldReconnect) {
@@ -100,12 +129,18 @@ class WhatsAppService {
           } else {
             console.log('[WhatsApp] Device logged out. Cleaning session credentials.');
             this.cleanAuthDir();
+            this.qrCode = null;
+            this.status = 'disconnected';
+            setTimeout(() => {
+              this.isInitializing = false;
+              this.init();
+            }, 1000);
           }
         }
       });
     } catch (err) {
       console.error('[WhatsApp] Initialization error:', err);
-      this.status = 'disconnected';
+      this.status = this.qrCode ? 'qr_ready' : 'disconnected';
     } finally {
       this.isInitializing = false;
     }
@@ -122,6 +157,11 @@ class WhatsAppService {
   }
 
   getStatus() {
+    // If disconnected and not initializing, trigger init
+    if ((this.status === 'disconnected' || (!this.sock && this.status !== 'connected')) && !this.isInitializing) {
+      this.init();
+    }
+
     return {
       status: this.status,
       qrCode: this.qrCode,
@@ -155,8 +195,8 @@ class WhatsAppService {
       if (this.sock) {
         await this.sock.logout();
       }
-    } catch (err) {
-      // Ignore logout socket error if already disconnected
+    } catch {
+      // Ignore logout socket error
     }
     this.cleanAuthDir();
     this.status = 'disconnected';
@@ -165,20 +205,16 @@ class WhatsAppService {
     this.userName = null;
     this.sock = null;
     this.isInitializing = false;
-    // Re-initialize to generate fresh QR
     await this.init();
     return { success: true };
   }
 
   async reconnect() {
-    if (this.sock) {
-      try {
-        this.sock.end();
-      } catch {
-        // ignore
-      }
-    }
-    this.sock = null;
+    this.cleanAuthDir();
+    this.qrCode = null;
+    this.userPhone = null;
+    this.userName = null;
+    this.status = 'connecting';
     this.isInitializing = false;
     await this.init();
     return this.getStatus();

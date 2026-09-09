@@ -1,6 +1,6 @@
 // WhatsApp message formatting utilities for PEELA VFX Tracker
 
-export type FormatStyle = 'executive' | 'list' | 'grid';
+export type FormatStyle = 'simple' | 'executive' | 'grid';
 
 export function wrapText(text: string, maxWidth: number): string[] {
   const words = text.split(/\s+/).filter(Boolean);
@@ -21,7 +21,30 @@ export function wrapText(text: string, maxWidth: number): string[] {
   return lines;
 }
 
-// 1. Executive Studio Card (Default & Recommended for VFX Studio updates)
+// 1. Simple Clean Notes (Default as requested by user: Project Name at top, then 1. [Shot] [Notes])
+export function formatSimpleCleanNotes(
+  items: Array<{ shotName: string; notes?: string }>,
+  projectName?: string
+): string {
+  if (items.length === 0) return '';
+  const lines: string[] = [];
+
+  const pName = projectName ? projectName.trim() : '';
+  if (pName) {
+    lines.push(`Project: ${pName}`);
+  }
+
+  items.forEach((item, index) => {
+    const num = index + 1;
+    const shot = item.shotName || 'Unnamed Shot';
+    const note = (item.notes || '').trim() || '—';
+    lines.push(`${num}. ${shot}   ${note}`);
+  });
+
+  return lines.join('\n\n');
+}
+
+// 2. Executive Studio Card
 export function formatExecutiveCard(
   items: Array<{ shotName: string; notes?: string; scopeOfWork?: string; department?: any }>,
   projectName?: string,
@@ -79,7 +102,7 @@ export function formatExecutiveCard(
   return lines.join('\n');
 }
 
-// 2. Clean Executive List
+// 3. Clean Executive List
 export function formatCleanList(
   items: Array<{ shotName: string; notes?: string; scopeOfWork?: string; department?: any }>,
   projectName?: string,
@@ -112,7 +135,7 @@ export function formatCleanList(
   return lines.join('\n');
 }
 
-// 3. Unicode Studio Grid
+// 4. Unicode Studio Grid
 export function formatStudioGrid(
   items: Array<{ shotName: string; notes?: string }>,
   projectName?: string,
