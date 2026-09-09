@@ -14,11 +14,13 @@ const rows = xlsx.utils.sheet_to_json(ws);
 
 const lmp2Shots = rows.map((r, i) => {
   const shotName = String(r['Shot Name'] || '').trim();
+  const roto = String(r['Rotoscope'] || '').trim().toLowerCase() === 'yes';
   const prep = String(r['Prep'] || '').trim().toLowerCase() === 'yes';
   const objTrack = String(r['Object Track'] || '').trim().toLowerCase() === 'yes';
   const camTrack = String(r['Camera 3D Tracking'] || '').trim().toLowerCase() === 'yes';
 
   const depts = [];
+  if (roto) depts.push('Roto');
   if (prep) depts.push('Prep');
   if (objTrack) depts.push('Object Tracking');
   if (camTrack) depts.push('Camera Tracking');

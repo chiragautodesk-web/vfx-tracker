@@ -157,7 +157,9 @@ export default function ExcelSyncModal({ isOpen, onClose, project }: ExcelSyncMo
         const vLower = String(val ?? '').toLowerCase().trim();
         const isYes = vLower === 'yes' || vLower === 'y' || vLower === 'true' || vLower === '1';
 
-        if (cLower === 'prep' || cLower.startsWith('prep ') || cLower === 'prep department') {
+        if (cLower === 'roto' || cLower === 'rotoscope' || cLower.includes('roto')) {
+          if (isYes && !detectedDepts.includes('Roto')) detectedDepts.push('Roto');
+        } else if (cLower === 'prep' || cLower.startsWith('prep ') || cLower === 'prep department') {
           if (isYes && !detectedDepts.includes('Prep')) detectedDepts.push('Prep');
         } else if (cLower === 'object track' || cLower === 'object tracking' || cLower.includes('obj track')) {
           if (isYes && !detectedDepts.includes('Object Tracking')) detectedDepts.push('Object Tracking');

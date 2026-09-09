@@ -19,6 +19,7 @@ export const LMP2_SHOTS: Shot[] = [
     "shotName": "LMP2_201_003_020",
     "scopeOfWork": "The background image is a cliff/sky behind the Lonely Palace.",
     "department": [
+      "Roto",
       "Camera Tracking"
     ],
     "description": "Methodology: 2D DMP, 2D Comp | Frames: 161",
@@ -40,6 +41,7 @@ export const LMP2_SHOTS: Shot[] = [
     "shotName": "LMP2_201_003_030",
     "scopeOfWork": "Roto, the Lonely Palace, goes into Comp with BG Plate.",
     "department": [
+      "Roto",
       "Camera Tracking"
     ],
     "description": "Methodology: 3D Environment, 2D Comp, 2D DMP, 3D Object | Frames: 98",
@@ -60,7 +62,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_201_018_010",
     "shotName": "LMP2_201_018_010",
     "scopeOfWork": "Comp BG is a tree in any forest.\n\n(P'Ked suggested trying to place the Plate from the Winter City there.)\nLMP2_201_001_050",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D DMP, 2D Comp | Frames: 330",
     "notes": "MONK: Comp background with footage. \n\n Cam: Lens : 28-340 mm. T Stop : 4 48 Fps \n\n Plate: Day 52 Drone / Alexa 35 Send all plates to VFX.",
     "artistIds": [],
@@ -79,7 +83,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_202_012_010",
     "shotName": "LMP2_202_012_010",
     "scopeOfWork": "Comp BG Cliff, Lonely Palace\n+ Reinforce the army from the distant celestial city\nSee torches slowly lighting up, lined up along the mountains.",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D DMP, 2D Comp, 2D FX | Frames: 153",
     "notes": "MONK: Comp BG Cliff, Lonely Palace\nRecharge remotely in Comp. \n\n Cam: Lens : 66 mm. T Stop : 2.8 24 Fps \n\n Plate: Included in the cut: Day 52 Drone / Alexa 35 Send all plates to VFX.",
     "artistIds": [],
@@ -98,7 +104,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_203_007_060",
     "shotName": "LMP2_203_007_060",
     "scopeOfWork": "Comp BG, Celestial Sky\nBehind the Throne Hall\n+ Add sky lanterns",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 3D Object, 2D DMP, 3D FX | Frames: 191",
     "notes": "MONK: Comp BG: Sky with footage\n\nLanterns are 3D animation. \n\n Cam: Lens :  mm. T Stop :   Fps",
     "artistIds": [],
@@ -117,7 +125,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_203_007_070",
     "shotName": "LMP2_203_007_070",
     "scopeOfWork": "Comp BG, Celestial Sky\nBehind the Throne Hall\n+ Add sky lanterns",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 3D Object, 2D DMP, 3D FX | Frames: 155",
     "notes": "MONK: Comp BG: Sky with footage\n\nLanterns are 3D animation. \n\n Cam: Lens :  mm. T Stop :   Fps",
     "artistIds": [],
@@ -390,7 +400,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_205_001_030",
     "shotName": "LMP2_205_001_030",
     "scopeOfWork": "Comp. The sky. The lonely palace.",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D Comp, 2D DMP | Frames: 100",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -409,7 +421,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_205_001_040",
     "shotName": "LMP2_205_001_040",
     "scopeOfWork": "Comp. The sky. The lonely palace.",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D Comp, 2D DMP | Frames: 382",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -428,7 +442,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_205_001_050",
     "shotName": "LMP2_205_001_050",
     "scopeOfWork": "Comp. The sky. The lonely palace.",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D Comp, 2D DMP | Frames: 110",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -447,7 +463,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_205_001_060",
     "shotName": "LMP2_205_001_060",
     "scopeOfWork": "Comp. The sky. The lonely palace.",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D Comp, 2D DMP | Frames: 171",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -466,7 +484,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_205_001_070",
     "shotName": "LMP2_205_001_070",
     "scopeOfWork": "Comp. The sky. The lonely palace.",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D Comp, 2D DMP | Frames: 133",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -485,7 +505,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_205_001_090",
     "shotName": "LMP2_205_001_090",
     "scopeOfWork": "Comp. The sky. The lonely palace.",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D Comp, 2D DMP | Frames: 107",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -504,7 +526,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_205_001_110",
     "shotName": "LMP2_205_001_110",
     "scopeOfWork": "Comp. The sky. The lonely palace.",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D Comp, 2D DMP | Frames: 188",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -523,7 +547,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_205_001_130",
     "shotName": "LMP2_205_001_130",
     "scopeOfWork": "Comp. The Sky, The Lonely Palace\nThis cut is intended to show the ground before the cliff.",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D Comp, 2D DMP | Frames: 221",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -542,7 +568,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_205_001_140",
     "shotName": "LMP2_205_001_140",
     "scopeOfWork": "Comp. The sky. The lonely palace.",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D Comp, 2D DMP | Frames: 208",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -561,7 +589,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_205_001_150",
     "shotName": "LMP2_205_001_150",
     "scopeOfWork": "Comp. The sky. The lonely palace.",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D Comp, 2D DMP | Frames: 137",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -798,6 +828,7 @@ export const LMP2_SHOTS: Shot[] = [
     "shotName": "LMP2_205_061_060",
     "scopeOfWork": "Add arrows to the Phuka side (3) Ananthip picks them up at the right moment.",
     "department": [
+      "Roto",
       "Object Tracking",
       "Camera Tracking"
     ],
@@ -841,7 +872,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_206_034_030",
     "shotName": "LMP2_206_034_030",
     "scopeOfWork": "Comp The Lonely Palace",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D DMP, 2D Comp | Frames: 229",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -860,7 +893,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_206_034_040",
     "shotName": "LMP2_206_034_040",
     "scopeOfWork": "Comp The Lonely Palace",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D DMP, 2D Comp | Frames: 193",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -879,7 +914,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_206_034_050",
     "shotName": "LMP2_206_034_050",
     "scopeOfWork": "Comp The Lonely Palace",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D DMP, 2D Comp | Frames: 180",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -898,7 +935,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_206_034_060",
     "shotName": "LMP2_206_034_060",
     "scopeOfWork": "Comp The Lonely Palace",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D DMP, 2D Comp | Frames: 311",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -917,7 +956,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_206_034_070",
     "shotName": "LMP2_206_034_070",
     "scopeOfWork": "Comp The Lonely Palace",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D DMP, 2D Comp | Frames: 519",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -936,7 +977,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_206_034_080",
     "shotName": "LMP2_206_034_080",
     "scopeOfWork": "Comp The Lonely Palace",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D DMP, 2D Comp | Frames: 119",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -955,7 +998,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_206_034_090",
     "shotName": "LMP2_206_034_090",
     "scopeOfWork": "Comp The Lonely Palace",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D DMP, 2D Comp | Frames: 179",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -974,7 +1019,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_206_034_100",
     "shotName": "LMP2_206_034_100",
     "scopeOfWork": "Comp The Lonely Palace",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D DMP, 2D Comp | Frames: 97",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -993,7 +1040,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_206_034_110",
     "shotName": "LMP2_206_034_110",
     "scopeOfWork": "Comp The Lonely Palace",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D DMP, 2D Comp | Frames: 132",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -1012,7 +1061,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_206_034_130",
     "shotName": "LMP2_206_034_130",
     "scopeOfWork": "Comp The Lonely Palace",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D DMP, 2D Comp | Frames: 123",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -1031,7 +1082,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_206_034_150",
     "shotName": "LMP2_206_034_150",
     "scopeOfWork": "Comp The Lonely Palace",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D DMP, 2D Comp | Frames: 158",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -1050,7 +1103,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_206_034_170",
     "shotName": "LMP2_206_034_170",
     "scopeOfWork": "Comp The Lonely Palace",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D DMP, 2D Comp | Frames: 106",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -1069,7 +1124,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_206_034_180",
     "shotName": "LMP2_206_034_180",
     "scopeOfWork": "Comp The Lonely Palace",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D DMP, 2D Comp | Frames: 180",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -1088,7 +1145,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_206_034_200",
     "shotName": "LMP2_206_034_200",
     "scopeOfWork": "Comp The Lonely Palace",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D DMP, 2D Comp | Frames: 186",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -1107,7 +1166,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_206_034_220",
     "shotName": "LMP2_206_034_220",
     "scopeOfWork": "Comp The Lonely Palace",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D DMP, 2D Comp | Frames: 396",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -1147,7 +1208,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_206_034_260",
     "shotName": "LMP2_206_034_260",
     "scopeOfWork": "Comp The Lonely Palace",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D DMP, 2D Comp | Frames: 246",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -1166,7 +1229,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_206_034_280",
     "shotName": "LMP2_206_034_280",
     "scopeOfWork": "Comp The Lonely Palace",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2D DMP, 2D Comp | Frames: 184",
     "notes": "MONK: Comp with footage. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
@@ -1206,7 +1271,9 @@ export const LMP2_SHOTS: Shot[] = [
     "shotNumber": "LMP2_206_034_300",
     "shotName": "LMP2_206_034_300",
     "scopeOfWork": "Comp The Lonely Palace",
-    "department": [],
+    "department": [
+      "Roto"
+    ],
     "description": "Methodology: 2.5D Cards, 2D Comp | Frames: 200",
     "notes": "MONK: Compose with footage:\nAdd Mattepaint to the grass before the cliff.\nAdjust the lighting in the footage to a sunrise. Add the sun. \n\n Cam: Lens :  mm. T Stop :   Fps \n\n Plate: Day 52 Drone / Alexa 35 There is a plate in the cut.",
     "artistIds": [],
