@@ -88,13 +88,13 @@ export interface DepartmentOption {
 }
 
 export const DEPARTMENT_OPTIONS: DepartmentOption[] = [
-  { value: 'Roto',          label: 'Roto',          color: '#8b5cf6' },
-  { value: 'Prep',          label: 'Prep',          color: '#f59e0b' },
-  { value: 'Object Track',  label: 'Object Track',  color: '#059669' },
-  { value: 'Camera Track',  label: 'Camera Track',  color: '#0284c7' },
-  { value: 'Matchmove',     label: 'Matchmove',     color: '#06b6d4' },
-  { value: 'Paint',         label: 'Paint',         color: '#f97316' },
-  { value: 'Comp',          label: 'Comp',          color: '#ec4899' },
+  { value: 'Roto',             label: 'Roto',             color: '#8b5cf6' },
+  { value: 'Prep',             label: 'Prep',             color: '#f59e0b' },
+  { value: 'Object Tracking',  label: 'Object Tracking',  color: '#059669' },
+  { value: 'Camera Tracking',  label: 'Camera Tracking',  color: '#0284c7' },
+  { value: 'Matchmove',        label: 'Matchmove',        color: '#06b6d4' },
+  { value: 'Paint',            label: 'Paint',            color: '#f97316' },
+  { value: 'Comp',             label: 'Comp',             color: '#ec4899' },
 ];
 
 // ===== Status options =====

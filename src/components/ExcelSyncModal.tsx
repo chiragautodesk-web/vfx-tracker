@@ -149,9 +149,47 @@ export default function ExcelSyncModal({ isOpen, onClose, project }: ExcelSyncMo
       const scopeOfWork = mapping.scopeOfWork ? String(row[mapping.scopeOfWork] || '').trim() : '';
       const departmentStr = mapping.department ? String(row[mapping.department] || '').trim() : '';
       const parsedDepartment: Department[] = parseDepartmentList(departmentStr);
+
+      // Detect department breakdown columns from row (Prep, Object Track, Camera 3D Tracking, etc.)
+      const detectedDepts: Department[] = [];
+      for (const [colName, val] of Object.entries(row)) {
+        const cLower = colName.toLowerCase().trim();
+        const vLower = String(val ?? '').toLowerCase().trim();
+        const isYes = vLower === 'yes' || vLower === 'y' || vLower === 'true' || vLower === '1';
+
+        if (cLower === 'prep' || cLower.startsWith('prep ') || cLower === 'prep department') {
+          if (isYes && !detectedDepts.includes('Prep')) detectedDepts.push('Prep');
+        } else if (cLower === 'object track' || cLower === 'object tracking' || cLower.includes('obj track')) {
+          if (isYes && !detectedDepts.includes('Object Tracking')) detectedDepts.push('Object Tracking');
+        } else if (cLower === 'camera 3d tracking' || cLower === 'camera tracking' || cLower === 'camera track' || cLower.includes('cam track')) {
+          if (isYes && !detectedDepts.includes('Camera Tracking')) detectedDepts.push('Camera Tracking');
+        }
+      }
+
+      const finalDepartments: Department[] = detectedDepts.length > 0
+        ? Array.from(new Set([...detectedDepts, ...parsedDepartment]))
+        : parsedDepartment;
+
       const shotName = mapping.shotName ? String(row[mapping.shotName]) : '';
-      const desc = mapping.description ? String(row[mapping.description]) : '';
-      const notes = mapping.notes ? String(row[mapping.notes]) : '';
+      let desc = mapping.description ? String(row[mapping.description]) : '';
+      let notes = mapping.notes ? String(row[mapping.notes]) : '';
+
+      // Intelligent note / description fallback from breakdown sheets
+      if (!desc && (row['Shot Methodologies'] || row['Frame Count'])) {
+        const parts: string[] = [];
+        if (row['Shot Methodologies']) parts.push(`Methodology: ${row['Shot Methodologies']}`);
+        if (row['Frame Count']) parts.push(`Frames: ${row['Frame Count']}`);
+        desc = parts.join(' | ');
+      }
+      if (!notes) {
+        const extraNotes: string[] = [];
+        if (row['MONK Note']) extraNotes.push(`MONK: ${row['MONK Note']}`);
+        if (row['Note (SMP)']) extraNotes.push(`SMP: ${row['Note (SMP)']}`);
+        if (row['Camera Details']) extraNotes.push(`Cam: ${String(row['Camera Details']).replace(/[\r\n]+/g, ' ')}`);
+        if (row['Background Plate']) extraNotes.push(`Plate: ${String(row['Background Plate']).replace(/[\r\n]+/g, ' ')}`);
+        if (row['Remark']) extraNotes.push(`Remark: ${row['Remark']}`);
+        if (extraNotes.length > 0) notes = extraNotes.join(' \n\n ');
+      }
       
       const existing = existingShots.find(s => 
         (s.shotName && s.shotName.toLowerCase() === shotIdentifier.toLowerCase()) || 
@@ -164,15 +202,16 @@ export default function ExcelSyncModal({ isOpen, onClose, project }: ExcelSyncMo
         if (artistIds.length > 0 && JSON.stringify(existing.artistIds || []) !== JSON.stringify(artistIds)) { newShot.artistIds = artistIds; changed = true; }
         if (mapping.status && existing.status !== status) { newShot.status = status; changed = true; }
         if (eta && existing.eta !== eta) { newShot.eta = eta; changed = true; }
-        if (notes && existing.notes !== notes) { newShot.notes = notes; changed = true; }
+        if (notes && (!existing.notes || existing.notes !== notes)) { newShot.notes = notes; changed = true; }
         if (finalDel && existing.finalDeliveryDate !== finalDel) { newShot.finalDeliveryDate = finalDel; changed = true; }
         if (scopeOfWork && existing.scopeOfWork !== scopeOfWork) { newShot.scopeOfWork = scopeOfWork; changed = true; }
-        if (departmentStr) {
-          const currentDeptStr = Array.isArray(existing.department)
-            ? existing.department.join(', ')
-            : String(existing.department || '');
-          if (currentDeptStr.toLowerCase() !== departmentStr.toLowerCase()) {
-            newShot.department = parsedDepartment;
+        
+        if (finalDepartments.length > 0) {
+          const currentDepts = parseDepartmentList(existing.department);
+          const currentSorted = currentDepts.slice().sort().join(',');
+          const newSorted = finalDepartments.slice().sort().join(',');
+          if (currentSorted !== newSorted) {
+            newShot.department = finalDepartments;
             changed = true;
           }
         }
@@ -205,7 +244,7 @@ export default function ExcelSyncModal({ isOpen, onClose, project }: ExcelSyncMo
           shotNumber: shotIdentifier,
           shotName: shotName || shotIdentifier,
           scopeOfWork,
-          department: parsedDepartment,
+          department: finalDepartments,
           description: desc,
           notes,
           artistIds,

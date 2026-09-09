@@ -220,11 +220,18 @@ export default function ShotsPage() {
             <button className="btn btn-secondary" onClick={() => setShowBackupModal(true)}>
               📦 Export / Backup
             </button>
-            {filterProjectId && (
-              <button className="btn btn-secondary" onClick={() => setShowSyncModal(true)}>
-                🔄 Sync / Update from Excel
-              </button>
-            )}
+            <button
+              className="btn btn-secondary"
+              onClick={() => {
+                if (!filterProjectId && state.projects.length > 0) {
+                  const targetId = state.selectedProjectId || state.projects[0].id;
+                  setFilterProjectId(targetId);
+                }
+                setShowSyncModal(true);
+              }}
+            >
+              🔄 Sync / Update from Excel
+            </button>
             <button className="btn btn-primary" onClick={() => { setForm({ ...emptyForm, projectId: filterProjectId || emptyForm.projectId }); setShowAddModal(true); }}>
               + Add Shot
             </button>
@@ -443,11 +450,11 @@ export default function ShotsPage() {
       </Modal>
 
       {/* Excel Sync Modal */}
-      {filterProjectId && (
+      {(filterProjectId || state.projects[0]) && (
         <ExcelSyncModal
           isOpen={showSyncModal}
           onClose={() => setShowSyncModal(false)}
-          project={state.projects.find(p => p.id === filterProjectId)!}
+          project={(state.projects.find(p => p.id === filterProjectId) || state.projects[0])!}
         />
       )}
 

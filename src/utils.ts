@@ -48,8 +48,9 @@ export function getStatusColor(value: ShotStatus): string {
 export function getDepartmentLabel(value?: string): string {
   if (!value) return '—';
   const valLower = value.trim().toLowerCase();
-  if (valLower === 'object tracking' || valLower === 'object track') return 'Object Track';
-  if (valLower === 'camera tracking' || valLower === 'camera track') return 'Camera Track';
+  if (valLower === 'object tracking' || valLower === 'object track' || valLower.includes('obj track')) return 'Object Tracking';
+  if (valLower === 'camera tracking' || valLower === 'camera track' || valLower === 'camera 3d tracking' || valLower.includes('cam track')) return 'Camera Tracking';
+  if (valLower === 'prep' || valLower === 'prep department') return 'Prep';
   const match = DEPARTMENT_OPTIONS.find((d) => d.value.toLowerCase() === valLower);
   return match?.label ?? value;
 }
@@ -58,8 +59,9 @@ export function getDepartmentLabel(value?: string): string {
 export function getDepartmentColor(value?: string): string {
   if (!value) return '#64748b';
   const valLower = value.trim().toLowerCase();
-  if (valLower === 'object tracking' || valLower === 'object track') return '#059669';
-  if (valLower === 'camera tracking' || valLower === 'camera track') return '#0284c7';
+  if (valLower === 'object tracking' || valLower === 'object track' || valLower.includes('obj track')) return '#059669';
+  if (valLower === 'camera tracking' || valLower === 'camera track' || valLower === 'camera 3d tracking' || valLower.includes('cam track')) return '#0284c7';
+  if (valLower === 'prep') return '#f59e0b';
   const match = DEPARTMENT_OPTIONS.find((d) => d.value.toLowerCase() === valLower);
   return match?.color ?? '#64748b';
 }
@@ -67,28 +69,24 @@ export function getDepartmentColor(value?: string): string {
 /** Parse department string or array into normalized Department[] */
 export function parseDepartmentList(value: unknown): Department[] {
   if (!value) return [];
+  const normalize = (v: any): Department => {
+    const s = String(v).trim();
+    const sLower = s.toLowerCase();
+    if (sLower === 'object tracking' || sLower === 'object track' || sLower.includes('obj track')) return 'Object Tracking';
+    if (sLower === 'camera tracking' || sLower === 'camera track' || sLower === 'camera 3d tracking' || sLower.includes('cam track')) return 'Camera Tracking';
+    if (sLower === 'prep' || sLower === 'prep department') return 'Prep';
+    const match = DEPARTMENT_OPTIONS.find((d) => d.value.toLowerCase() === sLower);
+    return (match ? match.value : s) as Department;
+  };
+
   if (Array.isArray(value)) {
-    return value.map((v) => {
-      const s = String(v).trim();
-      const sLower = s.toLowerCase();
-      if (sLower === 'object tracking') return 'Object Track';
-      if (sLower === 'camera tracking') return 'Camera Track';
-      const match = DEPARTMENT_OPTIONS.find((d) => d.value.toLowerCase() === sLower);
-      return match ? match.value : s;
-    }).filter(Boolean) as Department[];
+    return Array.from(new Set(value.map(normalize).filter(Boolean)));
   }
   if (typeof value === 'string') {
-    return value
+    return Array.from(new Set(value
       .split(/[,/\\+;&|]+/)
-      .map((v) => {
-        const s = v.trim();
-        const sLower = s.toLowerCase();
-        if (sLower === 'object tracking') return 'Object Track';
-        if (sLower === 'camera tracking') return 'Camera Track';
-        const match = DEPARTMENT_OPTIONS.find((d) => d.value.toLowerCase() === sLower);
-        return match ? match.value : s;
-      })
-      .filter(Boolean) as Department[];
+      .map(normalize)
+      .filter(Boolean)));
   }
   return [];
 }

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useReducer, useEffect, useCallback } 
 import type { AppState, AppAction, Project, Shot, Artist } from './types';
 import { now, today, generateId, parseDepartmentList } from './utils';
 import { supabase } from './supabaseClient';
+import { LMP2_PROJECT, LMP2_SHOTS } from './data/lmp2Data';
 
 /** Returns YYYY-MM-DD offset from today */
 function daysFromNow(offset: number): string {
@@ -53,6 +54,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
   ];
 
   const projects: Project[] = [
+    LMP2_PROJECT,
     {
       id: 'proj-1', name: 'Dragon Quest VFX', client: 'Marvel Studios',
       description: 'Full CG dragon sequences for hero shots',
@@ -71,6 +73,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
   ];
 
   const shots: Shot[] = [
+    ...LMP2_SHOTS,
     {
       id: 'shot-1', projectId: 'proj-1', shotNumber: 'DQ_010', shotName: 'Dragon Reveal',
       scopeOfWork: 'Dragon wireframe & texture cleanup', department: ['Roto', 'Prep'],
@@ -196,21 +199,59 @@ function migrateShot(s: any): Shot {
 function getInitialState(): AppState {
   const saved = loadFromStorage();
   if (saved && saved.projects && saved.projects.length > 0) {
-    const migratedShots = saved.shots?.map(migrateShot) || [];
+    let projects = saved.projects ?? [];
+    if (!projects.some(p => p.id === LMP2_PROJECT.id || p.name.trim().toLowerCase() === 'lmp2')) {
+      projects = [LMP2_PROJECT, ...projects];
+    }
+
+    const lmp2RefMap = new Map<string, Shot>();
+    for (const s of LMP2_SHOTS) {
+      lmp2RefMap.set(s.shotName.trim().toLowerCase(), s);
+    }
+
+    const matchedLmp2Names = new Set<string>();
+    let migratedShots = (saved.shots?.map(migrateShot) || []) as Shot[];
+    migratedShots = migratedShots.map(s => {
+      const nameKey = (s.shotName || s.shotNumber || '').trim().toLowerCase();
+      const ref = lmp2RefMap.get(nameKey);
+      if (ref) {
+        matchedLmp2Names.add(nameKey);
+        const existingDepts = parseDepartmentList(s.department);
+        const refDepts = parseDepartmentList(ref.department);
+        const combinedDepts = Array.from(new Set([...existingDepts, ...refDepts]));
+        return {
+          ...s,
+          projectId: s.projectId || ref.projectId,
+          department: combinedDepts,
+          scopeOfWork: s.scopeOfWork || ref.scopeOfWork,
+          notes: s.notes || ref.notes,
+          description: s.description || ref.description,
+        };
+      }
+      return s;
+    });
+
+    // Ensure all 63 LMP2 shots are present
+    for (const refShot of LMP2_SHOTS) {
+      const nameKey = refShot.shotName.trim().toLowerCase();
+      if (!matchedLmp2Names.has(nameKey)) {
+        migratedShots.push(refShot);
+      }
+    }
 
     return {
-      projects: saved.projects ?? [],
+      projects,
       shots: migratedShots,
       artists: saved.artists ?? [],
-      activeTab: 'today',
-      selectedProjectId: null,
+      activeTab: 'shots',
+      selectedProjectId: LMP2_PROJECT.id,
     };
   }
   const seed = createSeedData();
   return {
     ...seed,
-    activeTab: 'projects',
-    selectedProjectId: null,
+    activeTab: 'shots',
+    selectedProjectId: LMP2_PROJECT.id,
   };
 }
 
