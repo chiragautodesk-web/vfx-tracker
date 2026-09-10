@@ -180,4 +180,5 @@ export type AppAction =
   | { type: 'ADD_FEEDBACK'; payload: ClientFeedback }
   | { type: 'SYNC_EXCEL_SHOTS'; payload: { projectId: string; added: Shot[]; updated: Shot[] } }
   | { type: 'RESET_FOR_NEW_PROJECT'; payload?: { newProjectName?: string } }
-  | { type: 'LOAD_STATE'; payload: Partial<AppState> };
+  | { type: 'LOAD_STATE'; payload: Partial<AppState> }
+  | { type: 'REPLACE_STATE'; payload: { projects: Project[]; shots: Shot[]; artists: Artist[] } };

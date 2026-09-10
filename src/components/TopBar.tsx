@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import CloudSyncWidget from './CloudSyncWidget';
 import './TopBar.css';
 
 interface TopBarProps {
@@ -6,9 +7,10 @@ interface TopBarProps {
   subtitle?: string;
   actions?: ReactNode;
   stats?: { label: string; value: string | number; color?: string }[];
+  showSync?: boolean;
 }
 
-export default function TopBar({ title, subtitle, actions, stats }: TopBarProps) {
+export default function TopBar({ title, subtitle, actions, stats, showSync = true }: TopBarProps) {
   return (
     <header className="topbar">
       <div className="topbar-left">
@@ -29,7 +31,10 @@ export default function TopBar({ title, subtitle, actions, stats }: TopBarProps)
         </div>
       )}
 
-      <div className="topbar-actions">{actions}</div>
+      <div className="topbar-actions">
+        {showSync && <CloudSyncWidget />}
+        {actions}
+      </div>
     </header>
   );
 }

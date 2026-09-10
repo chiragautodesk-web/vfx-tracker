@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import type { AppState, AppAction, Project, Shot, Artist } from './types';
 import { now, today, generateId, parseDepartmentList } from './utils';
-import { supabase } from './supabaseClient';
+import { pullDataFromCloud } from './services/cloudSync';
 import { LMP2_PROJECT, LMP2_SHOTS } from './data/lmp2Data';
 import { PEELA_PROJECT, PEELA_SHOTS } from './data/peelaData';
 
@@ -562,6 +562,23 @@ function appReducer(state: AppState, action: AppAction): AppState {
       };
     }
 
+    case 'REPLACE_STATE': {
+      const payload = action.payload;
+      const peelaProj = (payload.projects || state.projects).find(
+        (p) => p.id === PEELA_PROJECT.id || p.name.trim().toLowerCase() === 'peela'
+      ) || PEELA_PROJECT;
+      const peelaProjId = peelaProj.id;
+
+      const migrated = (payload.shots || state.shots).map((s) => migrateShot(s, peelaProjId));
+
+      return {
+        ...state,
+        projects: payload.projects || state.projects,
+        shots: migrated,
+        artists: payload.artists || state.artists,
+      };
+    }
+
     default:
       return state;
   }
@@ -578,62 +595,26 @@ const StoreContext = createContext<StoreContextValue | null>(null);
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, undefined, getInitialState);
 
-  // 1. Background remote sync from Supabase with safe non-destructive resolution
+  // 1. Initial background sync check from Cloud (Localhost ⇄ Vercel)
   useEffect(() => {
-    if (!supabase) return;
-    
     let active = true;
-    async function loadRemote() {
+    async function loadCloudState() {
       try {
-        const { data, error } = await supabase!
-          .from('app_state')
-          .select('data')
-          .eq('id', 'global_state')
-          .single();
-
-        if (error && error.code !== 'PGRST116') {
-          console.warn('Supabase remote load note:', error.message || error);
-        }
-        
-        if (data && data.data && active) {
-          dispatch({ type: 'LOAD_STATE', payload: data.data });
+        const res = await pullDataFromCloud();
+        if (res.success && res.data && active) {
+          dispatch({ type: 'LOAD_STATE', payload: res.data });
         }
       } catch {
-        // Offline / DNS error / timeout -> silently fallback to local storage
+        // Silently fallback to local storage
       }
     }
-    loadRemote();
+    loadCloudState();
     return () => { active = false; };
   }, []);
 
-  // 2. Persist to storage (Local and Supabase) without blocking UI
+  // 2. Persist to local storage
   useEffect(() => {
-    // Save to local storage always as primary / reliable storage
     saveToStorage(state);
-    
-    // Save to Supabase quietly in the background with debounce and without premature abort
-    if (supabase) {
-      const timeoutId = setTimeout(async () => {
-        try {
-          const { projects, shots, artists } = state;
-          const { error } = await supabase!
-            .from('app_state')
-            .upsert({
-              id: 'global_state',
-              data: { projects, shots, artists },
-              updated_at: new Date().toISOString()
-            }, { onConflict: 'id' });
-
-          if (error) {
-            console.warn('Supabase sync note:', error.message || error);
-          }
-        } catch {
-          // silent
-        }
-      }, 800);
-
-      return () => clearTimeout(timeoutId);
-    }
   }, [state]);
 
   return (
