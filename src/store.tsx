@@ -31,15 +31,26 @@ function loadFromStorage(): Partial<AppState> | null {
 function saveToStorage(state: AppState): void {
   try {
     const { projects, shots, artists } = state;
+    const peelaProj = projects.find(p => p.id === PEELA_PROJECT.id || p.name.trim().toLowerCase() === 'peela');
+    const peelaId = peelaProj ? peelaProj.id : PEELA_PROJECT.id;
+
+    // Guarantee every shot whose name starts with PEEL has PEELA project ID
+    const normalizedShots = (shots || []).map(s => {
+      if ((s.shotName || s.shotNumber || '').trim().toUpperCase().startsWith('PEEL')) {
+        return { ...s, projectId: peelaId };
+      }
+      return s;
+    });
+
     const payload = JSON.stringify({ 
       projects, 
-      shots, 
+      shots: normalizedShots, 
       artists,
       lastSavedAt: new Date().toISOString()
     });
     localStorage.setItem(STORAGE_KEY, payload);
     // Keep an autosave backup whenever we have shots
-    if (shots && shots.length > 0) {
+    if (normalizedShots && normalizedShots.length > 0) {
       localStorage.setItem(BACKUP_KEY, payload);
     }
   } catch { /* ignore */ }
@@ -182,17 +193,19 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
   return { projects, shots, artists };
 }
 
-function migrateShot(s: any): Shot {
+function migrateShot(s: any, peelaProjId: string = 'proj-peela'): Shot {
   const shotName = s.shotName || s.shotNumber || 'Untitled Shot';
   const shotNumber = s.shotNumber || s.shotName || '';
   const department = parseDepartmentList(s.department || s.departments);
+  const isPeel = (shotName || shotNumber).trim().toUpperCase().startsWith('PEEL');
 
   return {
     ...s,
     shotName,
     shotNumber,
+    projectId: isPeel ? peelaProjId : (s.projectId || ''),
     scopeOfWork: s.scopeOfWork || '',
-    department,
+    department: isPeel ? Array.from(new Set([...department, 'Prep'])) : department,
     artistIds: Array.isArray(s.artistIds) ? s.artistIds : (s.artistId ? [s.artistId] : []),
     clientFeedback: Array.isArray(s.clientFeedback) ? s.clientFeedback : [],
   };
@@ -203,9 +216,15 @@ function getInitialState(): AppState {
   const saved = loadFromStorage();
   if (saved && saved.projects && saved.projects.length > 0) {
     let projects = saved.projects ?? [];
-    if (!projects.some(p => p.id === PEELA_PROJECT.id || p.name.trim().toLowerCase() === 'peela')) {
-      projects = [PEELA_PROJECT, ...projects];
+    let peelaProj = projects.find(p => p.id === PEELA_PROJECT.id || p.name.trim().toLowerCase() === 'peela');
+    if (!peelaProj) {
+      peelaProj = { ...PEELA_PROJECT };
+      projects = [peelaProj, ...projects];
+    } else {
+      peelaProj.name = 'PEELA';
     }
+    const peelaProjId = peelaProj.id;
+
     if (!projects.some(p => p.id === LMP2_PROJECT.id || p.name.trim().toLowerCase() === 'lmp2')) {
       projects = [LMP2_PROJECT, ...projects];
     }
@@ -222,22 +241,23 @@ function getInitialState(): AppState {
     }
     const matchedLmp2Names = new Set<string>();
 
-    let migratedShots = (saved.shots?.map(migrateShot) || []) as Shot[];
+    let migratedShots = (saved.shots?.map((s) => migrateShot(s, peelaProjId)) || []) as Shot[];
     migratedShots = migratedShots.map(s => {
       const nameKey = (s.shotName || s.shotNumber || '').trim().toLowerCase();
+      const isPeel = (s.shotName || s.shotNumber || '').trim().toUpperCase().startsWith('PEEL');
 
-      const peelaRef = peelaRefMap.get(nameKey);
-      if (peelaRef) {
+      if (isPeel) {
         matchedPeelaNames.add(nameKey);
+        const peelaRef = peelaRefMap.get(nameKey);
         const existingDepts = parseDepartmentList(s.department);
         const combinedDepts = Array.from(new Set([...existingDepts, 'Prep']));
         return {
           ...s,
-          projectId: peelaRef.projectId,
+          projectId: peelaProjId,
           department: combinedDepts,
-          scopeOfWork: s.scopeOfWork || peelaRef.scopeOfWork,
-          notes: s.notes || peelaRef.notes,
-          description: s.description || peelaRef.description,
+          scopeOfWork: s.scopeOfWork || peelaRef?.scopeOfWork || '',
+          notes: s.notes || peelaRef?.notes || '',
+          description: s.description || peelaRef?.description || '',
         };
       }
 
@@ -263,7 +283,11 @@ function getInitialState(): AppState {
     for (const refShot of PEELA_SHOTS) {
       const nameKey = refShot.shotName.trim().toLowerCase();
       if (!matchedPeelaNames.has(nameKey)) {
-        migratedShots.push(refShot);
+        migratedShots.push({
+          ...refShot,
+          projectId: peelaProjId,
+          department: ['Prep'],
+        });
       }
     }
 
@@ -280,7 +304,7 @@ function getInitialState(): AppState {
       shots: migratedShots,
       artists: saved.artists ?? [],
       activeTab: 'shots',
-      selectedProjectId: PEELA_PROJECT.id,
+      selectedProjectId: peelaProjId,
     };
   }
   const seed = createSeedData();
@@ -317,14 +341,29 @@ function appReducer(state: AppState, action: AppAction): AppState {
         selectedProjectId: state.selectedProjectId === action.payload ? null : state.selectedProjectId,
       };
 
-    case 'ADD_SHOT':
-      return { ...state, shots: [...state.shots, { ...action.payload, department: parseDepartmentList(action.payload.department) }] };
+    case 'ADD_SHOT': {
+      const isPeel = (action.payload.shotName || action.payload.shotNumber || '').trim().toUpperCase().startsWith('PEEL');
+      const peelaProjId = state.projects.find(p => p.id === PEELA_PROJECT.id || p.name.trim().toLowerCase() === 'peela')?.id || PEELA_PROJECT.id;
+      const newShot: Shot = {
+        ...action.payload,
+        projectId: isPeel ? peelaProjId : action.payload.projectId,
+        department: isPeel ? Array.from(new Set([...parseDepartmentList(action.payload.department), 'Prep'])) : parseDepartmentList(action.payload.department)
+      };
+      return { ...state, shots: [...state.shots, newShot] };
+    }
 
-    case 'UPDATE_SHOT':
+    case 'UPDATE_SHOT': {
+      const isPeel = (action.payload.shotName || action.payload.shotNumber || '').trim().toUpperCase().startsWith('PEEL');
+      const peelaProjId = state.projects.find(p => p.id === PEELA_PROJECT.id || p.name.trim().toLowerCase() === 'peela')?.id || PEELA_PROJECT.id;
       return {
         ...state,
-        shots: state.shots.map((s) => (s.id === action.payload.id ? { ...action.payload, department: parseDepartmentList(action.payload.department) } : s)),
+        shots: state.shots.map((s) => (s.id === action.payload.id ? {
+          ...action.payload,
+          projectId: isPeel ? peelaProjId : (action.payload.projectId || s.projectId),
+          department: isPeel ? Array.from(new Set([...parseDepartmentList(action.payload.department), 'Prep'])) : parseDepartmentList(action.payload.department)
+        } : s)),
       };
+    }
 
     case 'DELETE_SHOT':
       return { ...state, shots: state.shots.filter((s) => s.id !== action.payload) };
@@ -499,13 +538,16 @@ function appReducer(state: AppState, action: AppAction): AppState {
         }
       }
 
-      // Ensure all PEELA shots have Prep department
+      // Ensure all PEELA shots have projectId set to PEELA project and Prep department
+      const peelaProj = Array.from(projectMap.values()).find(p => p.id === PEELA_PROJECT.id || p.name.trim().toLowerCase() === 'peela') || PEELA_PROJECT;
+      const peelaProjId = peelaProj.id;
       const finalMergedShots = (mergedShots.length > 0 ? mergedShots : state.shots).map(s => {
-        if (s.projectId === PEELA_PROJECT.id || s.shotName?.startsWith('PEEL_')) {
+        const isPeel = (s.shotName || s.shotNumber || '').trim().toUpperCase().startsWith('PEEL');
+        if (isPeel || s.projectId === peelaProjId) {
           const depts = parseDepartmentList(s.department);
           return {
             ...s,
-            projectId: PEELA_PROJECT.id,
+            projectId: peelaProjId,
             department: Array.from(new Set([...depts, 'Prep']))
           };
         }
@@ -682,7 +724,20 @@ export function usePendingShots() {
 export function useProjectName() {
   const { state } = useStore();
   return useCallback(
-    (projectId: string) => state.projects.find((p) => p.id === projectId)?.name ?? '—',
+    (projectId: string, shotName?: string) => {
+      if (shotName && shotName.trim().toUpperCase().startsWith('PEEL')) {
+        return 'PEELA';
+      }
+      if (!projectId) return '—';
+      const found = state.projects.find(
+        (p) => p.id === projectId || p.name.trim().toLowerCase() === projectId.trim().toLowerCase()
+      );
+      if (found) return found.name;
+      if (projectId.trim().toLowerCase() === 'proj-peela' || projectId.trim().toLowerCase() === 'peela') {
+        return 'PEELA';
+      }
+      return projectId;
+    },
     [state.projects]
   );
 }

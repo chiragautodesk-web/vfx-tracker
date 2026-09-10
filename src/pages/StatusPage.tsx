@@ -72,8 +72,14 @@ export default function StatusPage() {
     },
     {
       key: 'projectId', label: 'Project', width: 160,
-      render: (row) => <span className="cell-text">{getProjectName(row.projectId)}</span>,
-      getValue: (row) => getProjectName(row.projectId),
+      render: (row) => {
+        const isPeel = (row.shotName || row.shotNumber || '').trim().toUpperCase().startsWith('PEEL');
+        return <span className="cell-text">{isPeel ? 'PEELA' : getProjectName(row.projectId)}</span>;
+      },
+      getValue: (row) => {
+        const isPeel = (row.shotName || row.shotNumber || '').trim().toUpperCase().startsWith('PEEL');
+        return isPeel ? 'PEELA' : getProjectName(row.projectId);
+      },
     },
     {
       key: 'artistIds', label: 'Artist', width: 140,

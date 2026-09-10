@@ -57,8 +57,16 @@ export default function ShotsPage() {
 
   const filteredShots = useMemo(() => {
     if (!filterProjectId) return state.shots;
-    return state.shots.filter((s) => s.projectId === filterProjectId);
-  }, [state.shots, filterProjectId]);
+    const filterProj = state.projects.find(p => p.id === filterProjectId);
+    const isPeelaFilter = filterProjectId === 'proj-peela' || filterProj?.name.trim().toLowerCase() === 'peela';
+
+    return state.shots.filter((s) => {
+      if (isPeelaFilter) {
+        return s.projectId === filterProjectId || (s.shotName || s.shotNumber || '').trim().toUpperCase().startsWith('PEEL');
+      }
+      return s.projectId === filterProjectId;
+    });
+  }, [state.shots, filterProjectId, state.projects]);
 
   const columns: ColumnDef<Shot>[] = useMemo(() => [
     {
@@ -111,8 +119,14 @@ export default function ShotsPage() {
       key: 'projectId', label: 'Project', width: 160,
       editable: true, type: 'select',
       options: state.projects.map((p) => ({ value: p.id, label: p.name })),
-      render: (row) => <span className="cell-text">{getProjectName(row.projectId)}</span>,
-      getValue: (row) => getProjectName(row.projectId),
+      render: (row) => {
+        const isPeel = (row.shotName || row.shotNumber || '').trim().toUpperCase().startsWith('PEEL');
+        return <span className="cell-text">{isPeel ? 'PEELA' : getProjectName(row.projectId)}</span>;
+      },
+      getValue: (row) => {
+        const isPeel = (row.shotName || row.shotNumber || '').trim().toUpperCase().startsWith('PEEL');
+        return isPeel ? 'PEELA' : getProjectName(row.projectId);
+      },
     },
     {
       key: 'artistIds', label: 'Artist', width: 150,
@@ -214,7 +228,17 @@ export default function ShotsPage() {
   };
 
   const handleRowUpdate = (row: Shot) => {
-    dispatch({ type: 'UPDATE_SHOT', payload: { ...row, department: parseDepartmentList(row.department), updatedAt: now() } });
+    const isPeel = (row.shotName || row.shotNumber || '').trim().toUpperCase().startsWith('PEEL');
+    const peelaProjId = state.projects.find(p => p.id === 'proj-peela' || p.name.toLowerCase() === 'peela')?.id || 'proj-peela';
+    dispatch({
+      type: 'UPDATE_SHOT',
+      payload: {
+        ...row,
+        projectId: isPeel ? peelaProjId : row.projectId,
+        department: isPeel ? Array.from(new Set([...parseDepartmentList(row.department), 'Prep'])) : parseDepartmentList(row.department),
+        updatedAt: now()
+      }
+    });
     showToast(`Saved "${row.shotName || 'Shot'}"`, 'info');
   };
 
@@ -282,12 +306,15 @@ export default function ShotsPage() {
           onRowUpdate={handleRowUpdate}
           onRowEditClick={(row) => {
             const depts = parseDepartmentList(row.department);
+            const isPeel = (row.shotName || row.shotNumber || '').trim().toUpperCase().startsWith('PEEL');
+            const peelaProjId = state.projects.find(p => p.id === 'proj-peela' || p.name.toLowerCase() === 'peela')?.id || 'proj-peela';
             setForm({
               ...emptyForm,
               ...row,
+              projectId: isPeel ? peelaProjId : (row.projectId || emptyForm.projectId),
               shotName: row.shotName || row.shotNumber || '',
               scopeOfWork: row.scopeOfWork || '',
-              department: depts.length > 0 ? depts : ['Roto'],
+              department: isPeel ? Array.from(new Set([...depts, 'Prep'])) : (depts.length > 0 ? depts : ['Prep']),
               artistIds: Array.isArray(row.artistIds) ? row.artistIds : ((row as any).artistId ? [(row as any).artistId] : []),
             });
             setShowAddModal(true);

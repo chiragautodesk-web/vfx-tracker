@@ -162,7 +162,7 @@ export default function ArtistsPage() {
                       </div>
                     </div>
                     <span className="artist-shot-project">
-                      {getProjectName(shot.projectId)}
+                      {getProjectName(shot.projectId, shot.shotName)}
                       {shot.scopeOfWork ? ` • ${shot.scopeOfWork}` : ''}
                     </span>
                     <div className="artist-shot-meta">
