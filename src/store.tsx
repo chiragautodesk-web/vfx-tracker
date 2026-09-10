@@ -3,6 +3,7 @@ import type { AppState, AppAction, Project, Shot, Artist } from './types';
 import { now, today, generateId, parseDepartmentList } from './utils';
 import { supabase } from './supabaseClient';
 import { LMP2_PROJECT, LMP2_SHOTS } from './data/lmp2Data';
+import { PEELA_PROJECT, PEELA_SHOTS } from './data/peelaData';
 
 /** Returns YYYY-MM-DD offset from today */
 function daysFromNow(offset: number): string {
@@ -54,6 +55,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
   ];
 
   const projects: Project[] = [
+    PEELA_PROJECT,
     LMP2_PROJECT,
     {
       id: 'proj-1', name: 'Dragon Quest VFX', client: 'Marvel Studios',
@@ -73,6 +75,7 @@ function createSeedData(): { projects: Project[]; shots: Shot[]; artists: Artist
   ];
 
   const shots: Shot[] = [
+    ...PEELA_SHOTS,
     ...LMP2_SHOTS,
     {
       id: 'shot-1', projectId: 'proj-1', shotNumber: 'DQ_010', shotName: 'Dragon Reveal',
@@ -200,19 +203,44 @@ function getInitialState(): AppState {
   const saved = loadFromStorage();
   if (saved && saved.projects && saved.projects.length > 0) {
     let projects = saved.projects ?? [];
+    if (!projects.some(p => p.id === PEELA_PROJECT.id || p.name.trim().toLowerCase() === 'peela')) {
+      projects = [PEELA_PROJECT, ...projects];
+    }
     if (!projects.some(p => p.id === LMP2_PROJECT.id || p.name.trim().toLowerCase() === 'lmp2')) {
       projects = [LMP2_PROJECT, ...projects];
     }
+
+    const peelaRefMap = new Map<string, Shot>();
+    for (const s of PEELA_SHOTS) {
+      peelaRefMap.set(s.shotName.trim().toLowerCase(), s);
+    }
+    const matchedPeelaNames = new Set<string>();
 
     const lmp2RefMap = new Map<string, Shot>();
     for (const s of LMP2_SHOTS) {
       lmp2RefMap.set(s.shotName.trim().toLowerCase(), s);
     }
-
     const matchedLmp2Names = new Set<string>();
+
     let migratedShots = (saved.shots?.map(migrateShot) || []) as Shot[];
     migratedShots = migratedShots.map(s => {
       const nameKey = (s.shotName || s.shotNumber || '').trim().toLowerCase();
+
+      const peelaRef = peelaRefMap.get(nameKey);
+      if (peelaRef) {
+        matchedPeelaNames.add(nameKey);
+        const existingDepts = parseDepartmentList(s.department);
+        const combinedDepts = Array.from(new Set([...existingDepts, 'Prep']));
+        return {
+          ...s,
+          projectId: peelaRef.projectId,
+          department: combinedDepts,
+          scopeOfWork: s.scopeOfWork || peelaRef.scopeOfWork,
+          notes: s.notes || peelaRef.notes,
+          description: s.description || peelaRef.description,
+        };
+      }
+
       const ref = lmp2RefMap.get(nameKey);
       if (ref) {
         matchedLmp2Names.add(nameKey);
@@ -231,6 +259,14 @@ function getInitialState(): AppState {
       return s;
     });
 
+    // Ensure all 288 PEELA shots are present
+    for (const refShot of PEELA_SHOTS) {
+      const nameKey = refShot.shotName.trim().toLowerCase();
+      if (!matchedPeelaNames.has(nameKey)) {
+        migratedShots.push(refShot);
+      }
+    }
+
     // Ensure all 63 LMP2 shots are present
     for (const refShot of LMP2_SHOTS) {
       const nameKey = refShot.shotName.trim().toLowerCase();
@@ -244,14 +280,14 @@ function getInitialState(): AppState {
       shots: migratedShots,
       artists: saved.artists ?? [],
       activeTab: 'shots',
-      selectedProjectId: LMP2_PROJECT.id,
+      selectedProjectId: PEELA_PROJECT.id,
     };
   }
   const seed = createSeedData();
   return {
     ...seed,
     activeTab: 'shots',
-    selectedProjectId: LMP2_PROJECT.id,
+    selectedProjectId: PEELA_PROJECT.id,
   };
 }
 
@@ -440,8 +476,11 @@ function appReducer(state: AppState, action: AppAction): AppState {
         }
       }
 
-      // Merge projects: keep all projects
+      // Merge projects: keep all projects, ensure PEELA_PROJECT is present
       const projectMap = new Map(state.projects.map(p => [p.id, p]));
+      if (!projectMap.has(PEELA_PROJECT.id)) {
+        projectMap.set(PEELA_PROJECT.id, PEELA_PROJECT);
+      }
       if (Array.isArray(stateData.projects)) {
         for (const rp of stateData.projects) {
           if (!projectMap.has(rp.id)) {
@@ -460,10 +499,23 @@ function appReducer(state: AppState, action: AppAction): AppState {
         }
       }
 
+      // Ensure all PEELA shots have Prep department
+      const finalMergedShots = (mergedShots.length > 0 ? mergedShots : state.shots).map(s => {
+        if (s.projectId === PEELA_PROJECT.id || s.shotName?.startsWith('PEEL_')) {
+          const depts = parseDepartmentList(s.department);
+          return {
+            ...s,
+            projectId: PEELA_PROJECT.id,
+            department: Array.from(new Set([...depts, 'Prep']))
+          };
+        }
+        return s;
+      });
+
       return {
         ...state,
         projects: Array.from(projectMap.values()),
-        shots: mergedShots.length > 0 ? mergedShots : state.shots,
+        shots: finalMergedShots,
         artists: Array.from(artistMap.values()),
       };
     }

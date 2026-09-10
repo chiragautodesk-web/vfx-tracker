@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useStore, useProjectName, useArtistNames } from '../store';
 import type { Shot, ColumnDef, ShotStatus, DeliveryStatus, Priority, Department } from '../types';
 import { STATUS_OPTIONS, DELIVERY_STATUS_OPTIONS, PRIORITY_OPTIONS, DEPARTMENT_OPTIONS } from '../types';
@@ -21,6 +21,12 @@ export default function ShotsPage() {
   const getArtistNames = useArtistNames();
 
   const [filterProjectId, setFilterProjectId] = useState<string>(state.selectedProjectId || '');
+
+  useEffect(() => {
+    if (state.selectedProjectId) {
+      setFilterProjectId(state.selectedProjectId);
+    }
+  }, [state.selectedProjectId]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [showBackupModal, setShowBackupModal] = useState(false);
