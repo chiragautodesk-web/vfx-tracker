@@ -2,6 +2,51 @@
 
 export type FormatStyle = 'simple' | 'executive' | 'grid';
 
+export type MessageFieldKey =
+  | 'shotName'
+  | 'scopeOfWork'
+  | 'department'
+  | 'notes'
+  | 'project'
+  | 'artist'
+  | 'status'
+  | 'priority'
+  | 'eta';
+
+export interface FieldOption {
+  key: MessageFieldKey;
+  label: string;
+  shortLabel: string;
+  icon?: string;
+  defaultChecked: boolean;
+}
+
+export const MESSAGE_FIELD_OPTIONS: FieldOption[] = [
+  { key: 'shotName',    label: 'Shot Name',     shortLabel: 'Shot',     defaultChecked: true },
+  { key: 'scopeOfWork', label: 'Scope of Work', shortLabel: 'Scope',    defaultChecked: false },
+  { key: 'department',  label: 'Department',    shortLabel: 'Dept',     defaultChecked: false },
+  { key: 'notes',       label: 'Notes',         shortLabel: 'Notes',    defaultChecked: true },
+  { key: 'project',     label: 'Project',       shortLabel: 'Project',  defaultChecked: false },
+  { key: 'artist',      label: 'Artist',        shortLabel: 'Artist',   defaultChecked: false },
+  { key: 'status',      label: 'Status',        shortLabel: 'Status',   defaultChecked: false },
+  { key: 'priority',    label: 'Priority',      shortLabel: 'Priority', defaultChecked: false },
+  { key: 'eta',         label: 'ETA',           shortLabel: 'ETA',      defaultChecked: false },
+];
+
+export interface ShotMessageData {
+  id?: string;
+  shotName: string;
+  shotNumber?: string;
+  scopeOfWork?: string;
+  department?: string;
+  notes?: string;
+  project?: string;
+  artist?: string;
+  status?: string;
+  priority?: string;
+  eta?: string;
+}
+
 export function wrapText(text: string, maxWidth: number): string[] {
   const words = text.split(/\s+/).filter(Boolean);
   if (words.length === 0) return [''];
@@ -21,32 +66,97 @@ export function wrapText(text: string, maxWidth: number): string[] {
   return lines;
 }
 
-// 1. Simple Clean Notes (Default as requested by user: Project Name at top, then 1. [Shot] [Notes])
-export function formatSimpleCleanNotes(
-  items: Array<{ shotName: string; notes?: string }>,
+// 1. Customizable Simple Clean Format
+export function formatCustomSimpleNotes(
+  items: ShotMessageData[],
+  fields: Record<MessageFieldKey, boolean>,
   projectName?: string
 ): string {
   if (items.length === 0) return '';
   const lines: string[] = [];
 
   const pName = projectName ? projectName.trim() : '';
-  if (pName) {
+  if (fields.project && pName) {
     lines.push(`Project: ${pName}`);
+    lines.push('');
   }
 
+  // Active detail fields (other than shotName and project)
+  const detailFieldKeys: MessageFieldKey[] = [
+    'scopeOfWork',
+    'department',
+    'artist',
+    'status',
+    'priority',
+    'eta',
+    'notes',
+  ];
+  const activeDetailKeys = detailFieldKeys.filter((k) => fields[k]);
+
+  // Special compact case: Only Shot Name and Notes are checked (Classic compact format)
+  if (activeDetailKeys.length === 1 && activeDetailKeys[0] === 'notes' && fields.shotName) {
+    const compactLines: string[] = [];
+    if (fields.project && pName) {
+      compactLines.push(`Project: ${pName}`);
+    }
+    items.forEach((item, index) => {
+      const num = index + 1;
+      const shot = item.shotName || 'Unnamed Shot';
+      const note = (item.notes || '').trim() || '—';
+      compactLines.push(`${num}. ${shot}   ${note}`);
+    });
+    return compactLines.join('\n\n');
+  }
+
+  // General case: Format each shot with selected fields
   items.forEach((item, index) => {
     const num = index + 1;
-    const shot = item.shotName || 'Unnamed Shot';
-    const note = (item.notes || '').trim() || '—';
-    lines.push(`${num}. ${shot}   ${note}`);
+    const shotLabel = fields.shotName ? (item.shotName || 'Unnamed Shot') : `Shot #${num}`;
+    
+    // Header line
+    lines.push(`${num}. *${shotLabel}*`);
+
+    // Details indented
+    const details: string[] = [];
+
+    if (fields.project && item.project && !pName) {
+      details.push(`   • Project: ${item.project}`);
+    }
+    if (fields.scopeOfWork && item.scopeOfWork && item.scopeOfWork !== '—') {
+      details.push(`   • Scope: ${item.scopeOfWork}`);
+    }
+    if (fields.department && item.department && item.department !== '—') {
+      details.push(`   • Dept: ${item.department}`);
+    }
+    if (fields.artist && item.artist && item.artist !== '—') {
+      details.push(`   • Artist: ${item.artist}`);
+    }
+    if (fields.status && item.status && item.status !== '—') {
+      const pText = fields.priority && item.priority && item.priority !== '—' ? ` | Priority: ${item.priority}` : '';
+      details.push(`   • Status: ${item.status}${pText}`);
+    } else if (fields.priority && item.priority && item.priority !== '—') {
+      details.push(`   • Priority: ${item.priority}`);
+    }
+    if (fields.eta && item.eta && item.eta !== '—') {
+      details.push(`   • ETA: ${item.eta}`);
+    }
+    if (fields.notes) {
+      const note = (item.notes || '').trim() || '—';
+      details.push(`   • Notes: ${note}`);
+    }
+
+    if (details.length > 0) {
+      lines.push(details.join('\n'));
+    }
   });
 
   return lines.join('\n\n');
 }
 
-// 2. Executive Studio Card
-export function formatExecutiveCard(
-  items: Array<{ shotName: string; notes?: string; scopeOfWork?: string; department?: any }>,
+// 2. Customizable Executive Card
+export function formatCustomExecutiveCard(
+  items: ShotMessageData[],
+  fields: Record<MessageFieldKey, boolean>,
   projectName?: string,
   options: { includeHeader?: boolean; includeTimestamp?: boolean } = {}
 ): string {
@@ -55,9 +165,9 @@ export function formatExecutiveCard(
 
   const lines: string[] = [];
   if (includeHeader) {
-    lines.push('🎬 *SSVFX STUDIO | SHOT NOTES UPDATE*');
+    lines.push('🎬 *SSVFX STUDIO | SHOT UPDATE*');
     lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    if (projectName) lines.push(`📁 *Project:* ${projectName}`);
+    if (fields.project && projectName) lines.push(`📁 *Project:* ${projectName}`);
     lines.push(`🎯 *Total Shots:* ${items.length}`);
     if (includeTimestamp) {
       const nowStr = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
@@ -67,28 +177,47 @@ export function formatExecutiveCard(
   }
 
   items.forEach((item, index) => {
-    lines.push(`🔹 *${item.shotName || 'Unnamed Shot'}*`);
+    const num = index + 1;
+    const shotLabel = fields.shotName ? (item.shotName || 'Unnamed Shot') : `Shot #${num}`;
+    lines.push(`🔹 *${num}. ${shotLabel}*`);
 
     const details: string[] = [];
-    if (item.scopeOfWork) details.push(`🏷️ *Scope:* ${item.scopeOfWork}`);
-    if (item.department) {
-      const depts = Array.isArray(item.department) ? item.department.join(', ') : String(item.department);
-      if (depts) details.push(`🎨 *Dept:* ${depts}`);
+    if (fields.project && item.project) {
+      details.push(`📁 *Project:* ${item.project}`);
     }
-
-    const noteText = (item.notes || '—').trim();
-    const noteLines = noteText.split(/\r?\n/).filter(Boolean);
-    if (noteLines.length === 0) noteLines.push('—');
+    if (fields.scopeOfWork && item.scopeOfWork && item.scopeOfWork !== '—') {
+      details.push(`🏷️ *Scope:* ${item.scopeOfWork}`);
+    }
+    if (fields.department && item.department && item.department !== '—') {
+      details.push(`🎨 *Dept:* ${item.department}`);
+    }
+    if (fields.artist && item.artist && item.artist !== '—') {
+      details.push(`👤 *Artist:* ${item.artist}`);
+    }
+    if (fields.status && item.status && item.status !== '—') {
+      details.push(`⚡ *Status:* ${item.status}`);
+    }
+    if (fields.priority && item.priority && item.priority !== '—') {
+      details.push(`🔥 *Priority:* ${item.priority}`);
+    }
+    if (fields.eta && item.eta && item.eta !== '—') {
+      details.push(`📅 *ETA:* ${item.eta}`);
+    }
 
     if (details.length > 0) {
       details.forEach((d, i) => {
-        const prefix = i === 0 ? '┌ ' : '├ ';
+        const hasNotes = fields.notes;
+        const prefix = (i === details.length - 1 && !hasNotes) ? '└ ' : '├ ';
         lines.push(prefix + d);
       });
+    }
+
+    if (fields.notes) {
+      const noteText = (item.notes || '—').trim();
+      const noteLines = noteText.split(/\r?\n/).filter(Boolean);
+      if (noteLines.length === 0) noteLines.push('—');
+
       lines.push('└ 📝 *Notes:*');
-      noteLines.forEach((nl) => lines.push(`   ${nl}`));
-    } else {
-      lines.push('📝 *Notes:*');
       noteLines.forEach((nl) => lines.push(`   ${nl}`));
     }
 
@@ -102,79 +231,82 @@ export function formatExecutiveCard(
   return lines.join('\n');
 }
 
-// 3. Clean Executive List
-export function formatCleanList(
-  items: Array<{ shotName: string; notes?: string; scopeOfWork?: string; department?: any }>,
+// 3. Customizable Unicode Studio Grid
+export function formatCustomStudioGrid(
+  items: ShotMessageData[],
+  fields: Record<MessageFieldKey, boolean>,
   projectName?: string,
   options: { includeHeader?: boolean; includeTimestamp?: boolean } = {}
 ): string {
   if (items.length === 0) return '';
   const { includeHeader = true, includeTimestamp = true } = options;
 
-  const lines: string[] = [];
-  if (includeHeader) {
-    lines.push('🎬 *SSVFX STUDIO | SHOT NOTES*');
-    if (projectName) lines.push(`📁 *Project:* ${projectName}  •  🎯 *Total:* ${items.length} Shots`);
-    if (includeTimestamp) {
-      const nowStr = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
-      lines.push(`📅 *Date:* ${nowStr}`);
-    }
-    lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+  interface ColumnDef {
+    key: string;
+    header: string;
+    width: number;
+    getValue: (item: ShotMessageData, idx: number) => string;
   }
 
-  items.forEach((item, idx) => {
-    lines.push(`*${idx + 1}. ${item.shotName || 'Unnamed Shot'}*`);
-    const note = (item.notes || '').trim() || '—';
-    lines.push(`📝 ${note}`);
-    if (item.scopeOfWork) lines.push(`🏷️ Scope: ${item.scopeOfWork}`);
-    if (idx < items.length - 1) lines.push('');
-  });
+  const columns: ColumnDef[] = [
+    { key: 'num', header: '#', width: 3, getValue: (_, idx) => String(idx + 1) },
+  ];
 
-  lines.push('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  lines.push('_Sent via PEELA VFX Tracker_');
-  return lines.join('\n');
-}
-
-// 4. Unicode Studio Grid
-export function formatStudioGrid(
-  items: Array<{ shotName: string; notes?: string }>,
-  projectName?: string,
-  options: { includeHeader?: boolean; includeTimestamp?: boolean } = {}
-): string {
-  if (items.length === 0) return '';
-  const { includeHeader = true, includeTimestamp = true } = options;
-
-  const maxShotLen = Math.max(9, ...items.map((s) => (s.shotName || '').length));
-  const shotColWidth = Math.min(22, Math.max(12, maxShotLen));
-  const notesColWidth = 38;
+  if (fields.shotName) {
+    const maxShot = Math.min(20, Math.max(9, ...items.map((s) => (s.shotName || '').length)));
+    columns.push({ key: 'shot', header: 'Shot Name', width: maxShot, getValue: (s) => s.shotName || 'N/A' });
+  }
+  if (fields.department) {
+    columns.push({ key: 'dept', header: 'Dept', width: 8, getValue: (s) => s.department || '—' });
+  }
+  if (fields.status) {
+    columns.push({ key: 'status', header: 'Status', width: 11, getValue: (s) => s.status || '—' });
+  }
+  if (fields.artist) {
+    columns.push({ key: 'artist', header: 'Artist', width: 12, getValue: (s) => s.artist || '—' });
+  }
+  if (fields.eta) {
+    columns.push({ key: 'eta', header: 'ETA', width: 11, getValue: (s) => s.eta || '—' });
+  }
+  if (fields.scopeOfWork) {
+    columns.push({ key: 'scope', header: 'Scope', width: 18, getValue: (s) => s.scopeOfWork || '—' });
+  }
+  if (fields.notes) {
+    columns.push({ key: 'notes', header: 'Notes', width: 26, getValue: (s) => s.notes || '—' });
+  }
 
   const pad = (str: string, len: number) => {
     if (str.length > len) return str.slice(0, len - 1) + '…';
     return str + ' '.repeat(Math.max(0, len - str.length));
   };
 
-  const topBorder = '╔' + '═'.repeat(shotColWidth + 2) + '╦' + '═'.repeat(notesColWidth + 2) + '╗';
-  const midBorder = '╠' + '═'.repeat(shotColWidth + 2) + '╬' + '═'.repeat(notesColWidth + 2) + '╣';
-  const botBorder = '╚' + '═'.repeat(shotColWidth + 2) + '╩' + '═'.repeat(notesColWidth + 2) + '╝';
-  const header = '║ ' + pad('Shot Name', shotColWidth) + ' ║ ' + pad('Notes', notesColWidth) + ' ║';
+  const topBorder = '╔' + columns.map((c) => '═'.repeat(c.width + 2)).join('╦') + '╗';
+  const midBorder = '╠' + columns.map((c) => '═'.repeat(c.width + 2)).join('╬') + '╣';
+  const botBorder = '╚' + columns.map((c) => '═'.repeat(c.width + 2)).join('╩') + '╝';
 
-  const tableLines = [topBorder, header, midBorder];
+  const headerLine = '║' + columns.map((c) => ' ' + pad(c.header, c.width) + ' ').join('║') + '║';
+  const tableLines: string[] = [topBorder, headerLine, midBorder];
 
   for (let idx = 0; idx < items.length; idx++) {
     const item = items[idx];
-    const rawShot = item.shotName || 'N/A';
-    const noteText = (item.notes || '').trim() || '—';
+    
+    // Check multiline for notes/scope
+    const colWrapped = columns.map((c) => {
+      const val = c.getValue(item, idx).trim();
+      const paras = val.split(/\r?\n/);
+      const wrapped: string[] = [];
+      paras.forEach((p) => wrapped.push(...wrapText(p, c.width)));
+      return wrapped.length > 0 ? wrapped : ['—'];
+    });
 
-    const paragraphs = noteText.split(/\r?\n/);
-    const wrappedNoteLines: string[] = [];
-    for (const p of paragraphs) {
-      wrappedNoteLines.push(...wrapText(p, notesColWidth));
-    }
-    if (wrappedNoteLines.length === 0) wrappedNoteLines.push('—');
+    const maxLinesInRow = Math.max(1, ...colWrapped.map((cw) => cw.length));
 
-    tableLines.push('║ ' + pad(rawShot, shotColWidth) + ' ║ ' + pad(wrappedNoteLines[0], notesColWidth) + ' ║');
-    for (let i = 1; i < wrappedNoteLines.length; i++) {
-      tableLines.push('║ ' + pad('', shotColWidth) + ' ║ ' + pad(wrappedNoteLines[i], notesColWidth) + ' ║');
+    for (let r = 0; r < maxLinesInRow; r++) {
+      const lineCells = columns.map((c, cIdx) => {
+        const text = colWrapped[cIdx][r] || '';
+        return ' ' + pad(text, c.width) + ' ';
+      });
+      tableLines.push('║' + lineCells.join('║') + '║');
     }
 
     if (idx < items.length - 1) {
@@ -187,8 +319,8 @@ export function formatStudioGrid(
 
   const headerParts: string[] = [];
   if (includeHeader) {
-    headerParts.push('🎬 *SSVFX STUDIO | SHOT NOTES TABLE*');
-    if (projectName) headerParts.push(`📁 *Project:* ${projectName}`);
+    headerParts.push('🎬 *SSVFX STUDIO | SHOT DATA TABLE*');
+    if (fields.project && projectName) headerParts.push(`📁 *Project:* ${projectName}`);
     headerParts.push(`🎯 *Total Shots:* ${items.length}`);
     if (includeTimestamp) {
       const nowStr = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
@@ -198,4 +330,86 @@ export function formatStudioGrid(
   }
 
   return [...headerParts, '```', tableOutput, '```', '', '_Sent via PEELA VFX Tracker_'].filter(Boolean).join('\n');
+}
+
+// Backwards-compatible convenience helpers
+export function formatSimpleCleanNotes(
+  items: Array<{ shotName: string; notes?: string }>,
+  projectName?: string
+): string {
+  const converted: ShotMessageData[] = items.map((i) => ({
+    shotName: i.shotName,
+    notes: i.notes,
+  }));
+  return formatCustomSimpleNotes(
+    converted,
+    {
+      shotName: true,
+      notes: true,
+      scopeOfWork: false,
+      department: false,
+      project: false,
+      artist: false,
+      status: false,
+      priority: false,
+      eta: false,
+    },
+    projectName
+  );
+}
+
+export function formatExecutiveCard(
+  items: Array<{ shotName: string; notes?: string; scopeOfWork?: string; department?: any }>,
+  projectName?: string,
+  options?: { includeHeader?: boolean; includeTimestamp?: boolean }
+): string {
+  const converted: ShotMessageData[] = items.map((i) => ({
+    shotName: i.shotName,
+    notes: i.notes,
+    scopeOfWork: i.scopeOfWork,
+    department: Array.isArray(i.department) ? i.department.join(', ') : (i.department ? String(i.department) : undefined),
+  }));
+  return formatCustomExecutiveCard(
+    converted,
+    {
+      shotName: true,
+      notes: true,
+      scopeOfWork: true,
+      department: true,
+      project: true,
+      artist: false,
+      status: false,
+      priority: false,
+      eta: false,
+    },
+    projectName,
+    options
+  );
+}
+
+export function formatStudioGrid(
+  items: Array<{ shotName: string; notes?: string }>,
+  projectName?: string,
+  options?: { includeHeader?: boolean; includeTimestamp?: boolean }
+): string {
+  const converted: ShotMessageData[] = items.map((i) => ({
+    shotName: i.shotName,
+    notes: i.notes,
+  }));
+  return formatCustomStudioGrid(
+    converted,
+    {
+      shotName: true,
+      notes: true,
+      scopeOfWork: false,
+      department: false,
+      project: false,
+      artist: false,
+      status: false,
+      priority: false,
+      eta: false,
+    },
+    projectName,
+    options
+  );
 }

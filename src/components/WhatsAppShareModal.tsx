@@ -2,11 +2,16 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import Modal from './Modal';
 import { useToast } from './Toast';
 import type { Shot } from '../types';
+import { useProjectName, useArtistNames } from '../store';
+import { getStatusLabel, getPriorityLabel, formatDepartments, formatDate } from '../utils';
 import {
   type FormatStyle,
-  formatSimpleCleanNotes,
-  formatExecutiveCard,
-  formatStudioGrid,
+  type MessageFieldKey,
+  type ShotMessageData,
+  MESSAGE_FIELD_OPTIONS,
+  formatCustomSimpleNotes,
+  formatCustomExecutiveCard,
+  formatCustomStudioGrid,
 } from '../utils/whatsappFormatter';
 import './WhatsAppShareModal.css';
 
@@ -24,6 +29,19 @@ interface SavedContact {
 
 const STORAGE_KEY_RECENTS = 'vfx_recent_whatsapp_recipients';
 const STORAGE_KEY_LAST_CODE = 'vfx_last_whatsapp_country_code';
+const STORAGE_KEY_FIELDS = 'vfx_whatsapp_selected_fields';
+
+const DEFAULT_FIELDS: Record<MessageFieldKey, boolean> = {
+  shotName: true,
+  notes: true,
+  scopeOfWork: false,
+  department: false,
+  project: false,
+  artist: false,
+  status: false,
+  priority: false,
+  eta: false,
+};
 
 export default function WhatsAppShareModal({
   isOpen,
@@ -32,6 +50,8 @@ export default function WhatsAppShareModal({
   projectName,
 }: WhatsAppShareModalProps) {
   const { showToast } = useToast();
+  const getProjectName = useProjectName();
+  const getArtistNames = useArtistNames();
 
   const [selectedShotIds, setSelectedShotIds] = useState<Set<string>>(new Set());
   const [countryCode, setCountryCode] = useState('+91');
@@ -39,6 +59,61 @@ export default function WhatsAppShareModal({
   const [contactName, setContactName] = useState('');
   const [formatMode, setFormatMode] = useState<FormatStyle>('simple');
   const [recents, setRecents] = useState<SavedContact[]>([]);
+  const [shotSearch, setShotSearch] = useState('');
+
+  // Field customization state (defaults to shotName + notes)
+  const [selectedFields, setSelectedFields] = useState<Record<MessageFieldKey, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_FIELDS);
+      if (saved) {
+        return { ...DEFAULT_FIELDS, ...JSON.parse(saved) };
+      }
+    } catch {
+      // ignore
+    }
+    return DEFAULT_FIELDS;
+  });
+
+  const toggleField = (key: MessageFieldKey) => {
+    setSelectedFields((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      try {
+        localStorage.setItem(STORAGE_KEY_FIELDS, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
+  const setAllFields = (val: boolean) => {
+    const next: Record<MessageFieldKey, boolean> = {
+      shotName: true,
+      scopeOfWork: val,
+      department: val,
+      notes: val,
+      project: val,
+      artist: val,
+      status: val,
+      priority: val,
+      eta: val,
+    };
+    setSelectedFields(next);
+    try {
+      localStorage.setItem(STORAGE_KEY_FIELDS, JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+  };
+
+  const resetFieldsToDefault = () => {
+    setSelectedFields(DEFAULT_FIELDS);
+    try {
+      localStorage.setItem(STORAGE_KEY_FIELDS, JSON.stringify(DEFAULT_FIELDS));
+    } catch {
+      // ignore
+    }
+  };
 
   const isLocalhost = typeof window !== 'undefined' && 
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
@@ -217,23 +292,54 @@ export default function WhatsAppShareModal({
     return shots.filter((s) => selectedShotIds.has(s.id));
   }, [shots, selectedShotIds]);
 
-  // Formatted message text based on chosen style
-  const messageText = useMemo(() => {
-    const items = selectedShots.map((s) => ({
+  // Comprehensive shot message data with all fields resolved
+  const selectedShotsData = useMemo<ShotMessageData[]>(() => {
+    return selectedShots.map((s) => ({
+      id: s.id,
       shotName: s.shotName || s.shotNumber || 'Unnamed Shot',
+      shotNumber: s.shotNumber,
       notes: s.notes,
       scopeOfWork: s.scopeOfWork,
-      department: s.department,
+      department: formatDepartments(s.department),
+      project: projectName || getProjectName(s.projectId, s.shotName || s.shotNumber),
+      artist: getArtistNames(s.artistIds),
+      status: getStatusLabel(s.status),
+      priority: getPriorityLabel(s.priority),
+      eta: s.eta ? formatDate(s.eta) : undefined,
     }));
+  }, [selectedShots, projectName, getProjectName, getArtistNames]);
 
+  // Formatted message text based on chosen style and dynamic checked fields
+  const messageText = useMemo(() => {
+    if (selectedShotsData.length === 0) return '';
     if (formatMode === 'simple') {
-      return formatSimpleCleanNotes(items, projectName);
+      return formatCustomSimpleNotes(selectedShotsData, selectedFields, projectName);
     } else if (formatMode === 'executive') {
-      return formatExecutiveCard(items, projectName);
+      return formatCustomExecutiveCard(selectedShotsData, selectedFields, projectName);
     } else {
-      return formatStudioGrid(items, projectName);
+      return formatCustomStudioGrid(selectedShotsData, selectedFields, projectName);
     }
-  }, [selectedShots, projectName, formatMode]);
+  }, [selectedShotsData, selectedFields, projectName, formatMode]);
+
+  // Filtered shots for the picker list in modal
+  const filteredShots = useMemo(() => {
+    if (!shotSearch.trim()) return shots;
+    const q = shotSearch.toLowerCase().trim();
+    return shots.filter((s) => {
+      const name = (s.shotName || s.shotNumber || '').toLowerCase();
+      const notes = (s.notes || '').toLowerCase();
+      const dept = (formatDepartments(s.department) || '').toLowerCase();
+      const artist = getArtistNames(s.artistIds).toLowerCase();
+      const status = getStatusLabel(s.status).toLowerCase();
+      return (
+        name.includes(q) ||
+        notes.includes(q) ||
+        dept.includes(q) ||
+        artist.includes(q) ||
+        status.includes(q)
+      );
+    });
+  }, [shots, shotSearch, getArtistNames]);
 
   // Save number to recents
   const saveToRecents = (phoneNum: string, name?: string) => {
@@ -579,13 +685,67 @@ export default function WhatsAppShareModal({
           )}
         </div>
 
+        {/* Fields to Include in WhatsApp Message */}
+        <div className="wa-section">
+          <div className="wa-section-title">
+            <span>
+              Fields to Include in Message ({Object.values(selectedFields).filter(Boolean).length} of {MESSAGE_FIELD_OPTIONS.length} active)
+            </span>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-xs"
+                onClick={resetFieldsToDefault}
+                title="Default: Shot Name + Notes only"
+              >
+                Default
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-xs"
+                onClick={() => setAllFields(true)}
+                title="Select all fields"
+              >
+                Select All
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-xs"
+                onClick={() => setAllFields(false)}
+                title="Only Shot Name"
+              >
+                Shot Only
+              </button>
+            </div>
+          </div>
+
+          <div className="wa-fields-grid">
+            {MESSAGE_FIELD_OPTIONS.map((field) => {
+              const isChecked = Boolean(selectedFields[field.key]);
+              return (
+                <label
+                  key={field.key}
+                  className={`wa-field-chip ${isChecked ? 'active' : ''}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => toggleField(field.key)}
+                  />
+                  <span>{field.label}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Selected Shots Picker */}
         <div className="wa-section">
           <div className="wa-section-title">
             <span>
               Shots to Include ({selectedShots.length} of {shots.length} selected)
             </span>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <button
                 type="button"
                 className="btn btn-ghost btn-xs"
@@ -606,10 +766,25 @@ export default function WhatsAppShareModal({
             </div>
           </div>
 
+          {shots.length > 5 && (
+            <input
+              type="text"
+              className="wa-shot-search-input"
+              placeholder="🔍 Filter shots by name, notes, artist, status..."
+              value={shotSearch}
+              onChange={(e) => setShotSearch(e.target.value)}
+            />
+          )}
+
           <div className="wa-shots-box">
-            {shots.map((shot) => {
+            {filteredShots.map((shot, index) => {
               const isChecked = selectedShotIds.has(shot.id);
               const hasNotes = Boolean(shot.notes && shot.notes.trim().length > 0);
+              const origIndex = shots.findIndex((s) => s.id === shot.id);
+              const shotArtist = getArtistNames(shot.artistIds);
+              const shotStatus = getStatusLabel(shot.status);
+              const shotDept = formatDepartments(shot.department);
+
               return (
                 <div
                   key={shot.id}
@@ -617,6 +792,7 @@ export default function WhatsAppShareModal({
                   onClick={() => toggleShot(shot.id)}
                 >
                   <div className="wa-shot-item-left">
+                    <span className="wa-shot-index">#{origIndex >= 0 ? origIndex + 1 : index + 1}</span>
                     <input
                       type="checkbox"
                       checked={isChecked}
@@ -626,6 +802,17 @@ export default function WhatsAppShareModal({
                     <span className="wa-shot-name">
                       {shot.shotName || shot.shotNumber || 'Unnamed'}
                     </span>
+                    <div className="wa-shot-meta-badges">
+                      {shotDept && shotDept !== '—' && (
+                        <span className="wa-shot-tag dept">{shotDept}</span>
+                      )}
+                      {shotStatus && (
+                        <span className="wa-shot-tag status">{shotStatus}</span>
+                      )}
+                      {shotArtist && shotArtist !== 'Unassigned' && (
+                        <span className="wa-shot-tag artist">{shotArtist}</span>
+                      )}
+                    </div>
                     <span className="wa-shot-notes-peek" title={shot.notes}>
                       {shot.notes || <span style={{ fontStyle: 'italic' }}>No notes</span>}
                     </span>

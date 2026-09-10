@@ -419,3 +419,116 @@
   background: rgba(37, 211, 102, 0.12) !important;
   border-color: #25D366 !important;
 }
+
+/* Fields to include grid */
+.wa-fields-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  background: var(--bg-surface, rgba(255, 255, 255, 0.02));
+  padding: 10px;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.wa-field-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.wa-field-chip:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.wa-field-chip.active {
+  background: rgba(37, 211, 102, 0.12);
+  border-color: rgba(37, 211, 102, 0.4);
+  color: #25D366;
+  font-weight: 600;
+}
+
+.wa-field-chip input[type="checkbox"] {
+  accent-color: #25D366;
+  cursor: pointer;
+  margin: 0;
+}
+
+/* Shot index numbering */
+.wa-shot-index {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  width: 28px;
+  text-align: right;
+  flex-shrink: 0;
+  font-family: var(--font-mono, monospace);
+}
+
+/* Shot search input inside modal */
+.wa-shot-search-input {
+  width: 100%;
+  padding: 7px 12px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  transition: all 0.15s ease;
+}
+
+.wa-shot-search-input:focus {
+  outline: none;
+  border-color: #25D366;
+  box-shadow: 0 0 6px rgba(37, 211, 102, 0.25);
+  background: rgba(0, 0, 0, 0.35);
+}
+
+/* Metadata chips inside shot item */
+.wa-shot-meta-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.wa-shot-tag {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  white-space: nowrap;
+}
+
+.wa-shot-tag.dept {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.wa-shot-tag.status {
+  background: rgba(2, 132, 199, 0.15);
+  color: #38bdf8;
+  border-color: rgba(2, 132, 199, 0.3);
+}
+
+.wa-shot-tag.artist {
+  background: rgba(139, 92, 246, 0.15);
+  color: #c084fc;
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
