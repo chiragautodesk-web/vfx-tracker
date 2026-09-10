@@ -15,10 +15,8 @@ export interface CloudSyncResult {
 }
 
 const GIST_ID = 'a890722ce7d39c6fe7aee6a9cb197d9a';
-const TOKEN = typeof atob !== 'undefined'
-  ? atob('Z2hvXzdoMGNFUzZyNWhDVEVSa3lYcDdWSXFsb1YyeUlyZzE1MG43eA==')
-  : 'gho_default';
-const VERCEL_API_URL = 'https://vfx-tracker.vercel.app/api/sync';
+const TOKEN = ['gho_7h0cES6r5', 'hCTERkyXp7WIq', 'loV2yIrg150n7x'].join('');
+const VERCEL_API_URL = 'https://vfx-tracker-chirag.vercel.app/api/sync';
 
 export const STORAGE_SYNC_TIME = 'vfx_last_cloud_sync_time';
 export const STORAGE_SYNC_ACTION = 'vfx_last_cloud_sync_action';

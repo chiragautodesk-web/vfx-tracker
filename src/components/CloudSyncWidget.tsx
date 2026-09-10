@@ -27,7 +27,7 @@ export default function CloudSyncWidget({ compact = false }: CloudSyncWidgetProp
   const [showModal, setShowModal] = useState(false);
 
   const isLocal = isLocalhost();
-  const vercelUrl = 'https://vfx-tracker.vercel.app';
+  const vercelUrl = 'https://vfx-tracker-chirag.vercel.app';
   const localUrl = 'http://localhost:5173';
 
   // Load initial sync metadata

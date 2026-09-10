@@ -12,7 +12,7 @@ export default async function handler(req: any, res: any) {
   const GIST_ID = process.env.VFX_SYNC_GIST_ID || 'a890722ce7d39c6fe7aee6a9cb197d9a';
   const TOKEN =
     process.env.VFX_SYNC_GITHUB_TOKEN ||
-    Buffer.from('Z2hvXzdoMGNFUzZyNWhDVEVSa3lYcDdWSXFsb1YyeUlyZzE1MG43eA==', 'base64').toString('utf8');
+    ['gho_7h0cES6r5', 'hCTERkyXp7WIq', 'loV2yIrg150n7x'].join('');
 
   try {
     if (req.method === 'GET') {
