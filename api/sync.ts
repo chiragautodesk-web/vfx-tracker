@@ -16,32 +16,47 @@ export default async function handler(req: any, res: any) {
 
   try {
     if (req.method === 'GET') {
-      const resp = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-        headers: {
-          Authorization: `Bearer ${TOKEN}`,
-          'User-Agent': 'VFX-Tracker-Sync',
-          Accept: 'application/vnd.github.v3+json',
-        },
-      });
+      try {
+        const resp = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+          headers: {
+            'User-Agent': 'VFX-Tracker-Sync',
+            Accept: 'application/vnd.github.v3+json',
+          },
+        });
 
-      if (!resp.ok) {
-        throw new Error(`GitHub API error: ${resp.status}`);
+        if (resp.ok) {
+          const gist = await resp.json();
+          const content = gist.files?.['vfx_state.json']?.content;
+          if (content) {
+            const data = JSON.parse(content);
+            res.status(200).json({
+              success: true,
+              data,
+              updatedAt: data.updatedAt || gist.updated_at,
+              source: 'gist_api',
+            });
+            return;
+          }
+        }
+      } catch {
+        // fallback to raw URL
       }
 
-      const gist = await resp.json();
-      const content = gist.files?.['vfx_state.json']?.content;
-      if (!content) {
-        throw new Error('vfx_state.json not found in Gist');
+      const rawResp = await fetch(
+        `https://gist.githubusercontent.com/chiragautodesk-web/${GIST_ID}/raw/vfx_state.json?t=${Date.now()}`
+      );
+      if (rawResp.ok) {
+        const data = await rawResp.json();
+        res.status(200).json({
+          success: true,
+          data,
+          updatedAt: data.updatedAt || new Date().toISOString(),
+          source: 'gist_raw',
+        });
+        return;
       }
 
-      const data = JSON.parse(content);
-      res.status(200).json({
-        success: true,
-        data,
-        updatedAt: data.updatedAt || gist.updated_at,
-        source: data.source || 'cloud',
-      });
-      return;
+      throw new Error('Failed to read Cloud State');
     }
 
     if (req.method === 'POST') {

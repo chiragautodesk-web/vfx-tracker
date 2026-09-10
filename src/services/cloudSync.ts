@@ -128,20 +128,22 @@ export async function pushDataToCloud(state: AppState): Promise<CloudSyncResult>
  * PULL latest data from Cloud (accessible by both Localhost and Vercel)
  */
 export async function pullDataFromCloud(): Promise<CloudSyncResult> {
-  const endpoints = isLocalhost()
-    ? [VERCEL_API_URL, `https://api.github.com/gists/${GIST_ID}`]
-    : ['/api/sync', VERCEL_API_URL, `https://api.github.com/gists/${GIST_ID}`];
+  const rawGistUrl = `https://gist.githubusercontent.com/chiragautodesk-web/${GIST_ID}/raw/vfx_state.json?t=${Date.now()}`;
+  const endpoints = [
+    rawGistUrl,
+    `https://api.github.com/gists/${GIST_ID}`,
+    isLocalhost() ? VERCEL_API_URL : '/api/sync',
+  ];
 
   let lastError = '';
 
   for (const endpoint of endpoints) {
     try {
-      const isGitHub = endpoint.includes('api.github.com');
+      const isGitHubApi = endpoint.includes('api.github.com');
       const res = await fetch(endpoint, {
         method: 'GET',
-        headers: isGitHub
+        headers: isGitHubApi
           ? {
-              Authorization: `Bearer ${TOKEN}`,
               'User-Agent': 'VFX-Tracker-Sync',
               Accept: 'application/vnd.github.v3+json',
             }
@@ -152,7 +154,7 @@ export async function pullDataFromCloud(): Promise<CloudSyncResult> {
         const json = await res.json();
         let cloudState: any = null;
 
-        if (isGitHub) {
+        if (isGitHubApi) {
           const content = json.files?.['vfx_state.json']?.content;
           if (content) cloudState = JSON.parse(content);
         } else {
