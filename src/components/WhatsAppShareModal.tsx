@@ -9,6 +9,7 @@ import {
   type MessageFieldKey,
   type ShotMessageData,
   MESSAGE_FIELD_OPTIONS,
+  formatMonospaceTable,
   formatCustomSimpleNotes,
   formatCustomExecutiveCard,
   formatCustomStudioGrid,
@@ -33,14 +34,14 @@ const STORAGE_KEY_FIELDS = 'vfx_whatsapp_selected_fields';
 
 const DEFAULT_FIELDS: Record<MessageFieldKey, boolean> = {
   shotName: true,
-  notes: true,
-  scopeOfWork: false,
+  status: true,
+  eta: true,
   department: false,
-  project: false,
+  notes: false,
   artist: false,
-  status: false,
+  scopeOfWork: false,
   priority: false,
-  eta: false,
+  project: false,
 };
 
 export default function WhatsAppShareModal({
@@ -57,7 +58,7 @@ export default function WhatsAppShareModal({
   const [countryCode, setCountryCode] = useState('+91');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [contactName, setContactName] = useState('');
-  const [formatMode, setFormatMode] = useState<FormatStyle>('simple');
+  const [formatMode, setFormatMode] = useState<FormatStyle>('table');
   const [recents, setRecents] = useState<SavedContact[]>([]);
   const [shotSearch, setShotSearch] = useState('');
 
@@ -89,14 +90,14 @@ export default function WhatsAppShareModal({
   const setAllFields = (val: boolean) => {
     const next: Record<MessageFieldKey, boolean> = {
       shotName: true,
-      scopeOfWork: val,
+      status: val,
+      eta: val,
       department: val,
       notes: val,
-      project: val,
       artist: val,
-      status: val,
+      scopeOfWork: val,
       priority: val,
-      eta: val,
+      project: val,
     };
     setSelectedFields(next);
     try {
@@ -312,7 +313,9 @@ export default function WhatsAppShareModal({
   // Formatted message text based on chosen style and dynamic checked fields
   const messageText = useMemo(() => {
     if (selectedShotsData.length === 0) return '';
-    if (formatMode === 'simple') {
+    if (formatMode === 'table') {
+      return formatMonospaceTable(selectedShotsData, selectedFields, projectName);
+    } else if (formatMode === 'simple') {
       return formatCustomSimpleNotes(selectedShotsData, selectedFields, projectName);
     } else if (formatMode === 'executive') {
       return formatCustomExecutiveCard(selectedShotsData, selectedFields, projectName);
@@ -696,9 +699,37 @@ export default function WhatsAppShareModal({
                 type="button"
                 className="btn btn-ghost btn-xs"
                 onClick={resetFieldsToDefault}
-                title="Default: Shot Name + Notes only"
+                title="Default: Shot Number, Status, ETA"
               >
                 Default
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-xs"
+                onClick={() => {
+                  setSelectedFields((prev) => {
+                    const next = { ...prev, notes: !prev.notes };
+                    try { localStorage.setItem(STORAGE_KEY_FIELDS, JSON.stringify(next)); } catch {}
+                    return next;
+                  });
+                }}
+                title="Toggle Notes column"
+              >
+                {selectedFields.notes ? 'Hide Notes' : '+ Notes'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-xs"
+                onClick={() => {
+                  setSelectedFields((prev) => {
+                    const next = { ...prev, department: !prev.department };
+                    try { localStorage.setItem(STORAGE_KEY_FIELDS, JSON.stringify(next)); } catch {}
+                    return next;
+                  });
+                }}
+                title="Toggle Department column"
+              >
+                {selectedFields.department ? 'Hide Dept' : '+ Dept'}
               </button>
               <button
                 type="button"
@@ -712,7 +743,7 @@ export default function WhatsAppShareModal({
                 type="button"
                 className="btn btn-ghost btn-xs"
                 onClick={() => setAllFields(false)}
-                title="Only Shot Name"
+                title="Only Shot Number"
               >
                 Shot Only
               </button>
@@ -831,11 +862,19 @@ export default function WhatsAppShareModal({
             <div className="wa-format-pills">
               <button
                 type="button"
+                className={`wa-format-pill ${formatMode === 'table' ? 'active' : ''}`}
+                onClick={() => setFormatMode('table')}
+                title="Aligned monospace table matching WhatsApp code block (Default)"
+              >
+                📊 Tabular (Default)
+              </button>
+              <button
+                type="button"
                 className={`wa-format-pill ${formatMode === 'simple' ? 'active' : ''}`}
                 onClick={() => setFormatMode('simple')}
-                title="Simple clean text with Shot Name & Notes only (Default)"
+                title="Numbered bullet list"
               >
-                📋 Simple Clean (Default)
+                📋 Clean List
               </button>
               <button
                 type="button"
@@ -849,9 +888,9 @@ export default function WhatsAppShareModal({
                 type="button"
                 className={`wa-format-pill ${formatMode === 'grid' ? 'active' : ''}`}
                 onClick={() => setFormatMode('grid')}
-                title="Unicode double-border spreadsheet grid"
+                title="Spreadsheet box grid"
               >
-                📊 Studio Grid
+                🔲 Box Grid
               </button>
             </div>
           </div>
@@ -867,16 +906,24 @@ export default function WhatsAppShareModal({
           </div>
 
           <div className="wa-preview-container">
-            <div className="wa-preview-bubble">
-              {formatMode === 'grid' ? (
+            {formatMode === 'table' ? (
+              <pre className="wa-preview-table-box">
+                {messageText.replace(/^```\n?/, '').replace(/\n?```$/, '')}
+              </pre>
+            ) : formatMode === 'grid' ? (
+              <div className="wa-preview-bubble">
                 <pre style={{ margin: 0, fontFamily: 'Consolas, monospace', fontSize: '11.5px', whiteSpace: 'pre', overflowX: 'auto', background: 'transparent', border: 'none', padding: 0 }}>
                   {messageText}
                 </pre>
-              ) : (
-                messageText
-              )}
+              </div>
+            ) : (
+              <div className="wa-preview-bubble">
+                {messageText}
+              </div>
+            )}
+            <div className="wa-char-count">
+              {messageText.length} characters • {formatMode === 'table' ? 'WhatsApp Monospace Tabular Format' : `${formatMode} style`}
             </div>
-            <div className="wa-char-count">{messageText.length} characters</div>
           </div>
         </div>
       </div>

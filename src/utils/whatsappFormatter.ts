@@ -1,17 +1,17 @@
 // WhatsApp message formatting utilities for PEELA VFX Tracker
 
-export type FormatStyle = 'simple' | 'executive' | 'grid';
+export type FormatStyle = 'table' | 'simple' | 'executive' | 'grid';
 
 export type MessageFieldKey =
   | 'shotName'
-  | 'scopeOfWork'
+  | 'status'
+  | 'eta'
   | 'department'
   | 'notes'
-  | 'project'
   | 'artist'
-  | 'status'
+  | 'scopeOfWork'
   | 'priority'
-  | 'eta';
+  | 'project';
 
 export interface FieldOption {
   key: MessageFieldKey;
@@ -22,15 +22,15 @@ export interface FieldOption {
 }
 
 export const MESSAGE_FIELD_OPTIONS: FieldOption[] = [
-  { key: 'shotName',    label: 'Shot Name',     shortLabel: 'Shot',     defaultChecked: true },
-  { key: 'scopeOfWork', label: 'Scope of Work', shortLabel: 'Scope',    defaultChecked: false },
+  { key: 'shotName',    label: 'Shot Number',   shortLabel: 'Shot',     defaultChecked: true },
+  { key: 'status',      label: 'Status',        shortLabel: 'Status',   defaultChecked: true },
+  { key: 'eta',         label: 'ETA',           shortLabel: 'ETA',      defaultChecked: true },
   { key: 'department',  label: 'Department',    shortLabel: 'Dept',     defaultChecked: false },
-  { key: 'notes',       label: 'Notes',         shortLabel: 'Notes',    defaultChecked: true },
-  { key: 'project',     label: 'Project',       shortLabel: 'Project',  defaultChecked: false },
+  { key: 'notes',       label: 'Notes',         shortLabel: 'Notes',    defaultChecked: false },
   { key: 'artist',      label: 'Artist',        shortLabel: 'Artist',   defaultChecked: false },
-  { key: 'status',      label: 'Status',        shortLabel: 'Status',   defaultChecked: false },
+  { key: 'scopeOfWork', label: 'Scope of Work', shortLabel: 'Scope',    defaultChecked: false },
   { key: 'priority',    label: 'Priority',      shortLabel: 'Priority', defaultChecked: false },
-  { key: 'eta',         label: 'ETA',           shortLabel: 'ETA',      defaultChecked: false },
+  { key: 'project',     label: 'Project',       shortLabel: 'Project',  defaultChecked: false },
 ];
 
 export interface ShotMessageData {
@@ -45,6 +45,143 @@ export interface ShotMessageData {
   status?: string;
   priority?: string;
   eta?: string;
+}
+
+/** Formats ETA date nicely to match studio standard (e.g. 10 Sept 2026) */
+export function formatEtaDate(dateStr?: string): string {
+  if (!dateStr || dateStr === '—') return '—';
+  const str = String(dateStr).trim();
+  const ymd = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
+  if (ymd) {
+    const year = ymd[1];
+    const monthIdx = parseInt(ymd[2], 10) - 1;
+    const day = parseInt(ymd[3], 10);
+    const month = months[monthIdx] || ymd[2];
+    return `${day} ${month} ${year}`;
+  }
+  const d = new Date(str);
+  if (isNaN(d.getTime())) return str;
+  const day = d.getDate();
+  const month = months[d.getMonth()];
+  const year = d.getFullYear();
+  return `${day} ${month} ${year}`;
+}
+
+/**
+ * Formats shots as a clean monospace tabular report with aligned columns,
+ * matching WhatsApp code-block layout (`Shot Number   Status   ETA ...`).
+ */
+export function formatMonospaceTable(
+  items: ShotMessageData[],
+  fields: Record<MessageFieldKey, boolean>,
+  projectName?: string
+): string {
+  if (items.length === 0) return '';
+
+  const COLUMN_SPECS: Array<{
+    key: MessageFieldKey;
+    header: string;
+    minWidth: number;
+    getValue: (item: ShotMessageData) => string;
+  }> = [
+    {
+      key: 'shotName',
+      header: 'Shot Number',
+      minWidth: 21,
+      getValue: (i) => i.shotNumber || i.shotName || '—',
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      minWidth: 16,
+      getValue: (i) => i.status || '—',
+    },
+    {
+      key: 'eta',
+      header: 'ETA',
+      minWidth: 16,
+      getValue: (i) => formatEtaDate(i.eta),
+    },
+    {
+      key: 'department',
+      header: 'Department',
+      minWidth: 15,
+      getValue: (i) => i.department || '—',
+    },
+    {
+      key: 'notes',
+      header: 'Notes',
+      minWidth: 15,
+      getValue: (i) => i.notes || '—',
+    },
+    {
+      key: 'artist',
+      header: 'Artist',
+      minWidth: 15,
+      getValue: (i) => i.artist || '—',
+    },
+    {
+      key: 'scopeOfWork',
+      header: 'Scope',
+      minWidth: 12,
+      getValue: (i) => i.scopeOfWork || '—',
+    },
+    {
+      key: 'priority',
+      header: 'Priority',
+      minWidth: 10,
+      getValue: (i) => i.priority || '—',
+    },
+    {
+      key: 'project',
+      header: 'Project',
+      minWidth: 12,
+      getValue: (i) => i.project || projectName || '—',
+    },
+  ];
+
+  // Filter to active columns
+  const activeCols = COLUMN_SPECS.filter((col) => fields[col.key]);
+  if (activeCols.length === 0) {
+    activeCols.push(COLUMN_SPECS[0]);
+  }
+
+  // Calculate width for each column
+  const colWidths = activeCols.map((col, idx) => {
+    let maxContent = col.header.length;
+    for (const item of items) {
+      const val = col.getValue(item) || '—';
+      if (val.length > maxContent) maxContent = val.length;
+    }
+    const isLast = idx === activeCols.length - 1;
+    const base = Math.max(maxContent, col.minWidth);
+    return isLast ? maxContent : Math.max(base, maxContent + 4);
+  });
+
+  // Header line
+  const headerLine = activeCols
+    .map((c, i) => (i === activeCols.length - 1 ? c.header : c.header.padEnd(colWidths[i], ' ')))
+    .join('');
+
+  let maxLineWidth = headerLine.length;
+
+  // Row lines
+  const rowLines = items.map((item) => {
+    const line = activeCols
+      .map((c, i) => {
+        const val = c.getValue(item) || '—';
+        return i === activeCols.length - 1 ? val : val.padEnd(colWidths[i], ' ');
+      })
+      .join('');
+    if (line.length > maxLineWidth) maxLineWidth = line.length;
+    return line;
+  });
+
+  const divider = '-'.repeat(Math.max(headerLine.length, maxLineWidth));
+
+  // Monospace code block for WhatsApp
+  return '```\n' + [headerLine, divider, ...rowLines].join('\n') + '\n```';
 }
 
 export function wrapText(text: string, maxWidth: number): string[] {
